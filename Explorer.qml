@@ -18,6 +18,7 @@ Item {
   property var shell: null
   property var manifest: null
   property var service: null
+  readonly property var userDesigns: service && service.userDesigns ? service.userDesigns : []
 
   // Omarchy 4.0.3 hands this overlay `service = null`: the service is an
   // authentication service (a clone of omarchy.lock) and the host keeps those
@@ -132,7 +133,7 @@ Item {
   readonly property var favoriteIds: service && service.favorites ? service.favorites : []
   function isFavorite(id) { return root.favoriteIds.indexOf(id) !== -1 }
   function favoriteDesigns() {
-    return Designs.all().filter(function(d) { return root.favoriteIds.indexOf(d.id) !== -1 })
+    return Designs.all(root.userDesigns).filter(function(d) { return root.favoriteIds.indexOf(d.id) !== -1 })
   }
   function matchesSearch(d, words) {
     var hay = [d.name, d.id, d.description || ""].concat(d.tags || []).join(" ").toLowerCase()
@@ -223,10 +224,10 @@ Item {
   readonly property var designs: {
     var r = service ? service.designsRevision : 0
     var words = searchText.trim().toLowerCase().split(/\s+/).filter(function(w) { return w.length > 0 })
-    if (words.length > 0) return Designs.all().filter(function(d) { return root.matchesSearch(d, words) })
-    if (mainTab === "animation") return Designs.animations()
+    if (words.length > 0) return Designs.all(root.userDesigns).filter(function(d) { return root.matchesSearch(d, words) })
+    if (mainTab === "animation") return Designs.animations(root.userDesigns)
     if (mainTab === "favorites") return favoriteDesigns()
-    return Designs.stylings()
+    return Designs.stylings(root.userDesigns)
   }
   readonly property string pluginId: manifest && manifest.id ? String(manifest.id) : "io.github.sirjul1337.lock-explorer"
   readonly property string activeDesignId: service ? service.designId
@@ -371,7 +372,7 @@ Item {
   // `omarchy-shell lock setBoot`. Only designs with a Plymouth twin under
   // plymouth/ can style it; "follow" tracks the lock design when it has one.
   readonly property string followHint: {
-    var d = Designs.byId(activeDesignId)
+    var d = Designs.byId(activeDesignId, root.userDesigns)
     var name = d ? d.name : root.tr("your lock screen")
     if (d && d.boot === true) return root.tr("Boot matches %1 with its animated twin").arg(name)
     return root.tr("Boot matches %1 as a still — same styling for both").arg(name)
@@ -401,12 +402,12 @@ Item {
     if (bootApplied.length === 0) return root.tr("Stock Omarchy")
     if (bootApplied === "theme") return root.tr("Theme colors")
     if (bootApplied.indexOf("snapshot:") === 0) {
-      var sd = Designs.byId(bootApplied.substring(9))
+      var sd = Designs.byId(bootApplied.substring(9), root.userDesigns)
       return root.tr("%1 (snapshot)").arg(sd ? sd.name : bootApplied.substring(9))
     }
     if (bootApplied.indexOf("custom:") === 0) return bootApplied.substring(7)
     if (bootApplied.indexOf("video:") === 0) return bootApplied.substring(6).replace(/\.[^.]+$/, "")
-    var d = Designs.byId(bootApplied)
+    var d = Designs.byId(bootApplied, root.userDesigns)
     return d ? d.name : bootApplied
   }
   readonly property var bootVideos: service && service.bootVideos !== undefined ? service.bootVideos : []
@@ -433,7 +434,7 @@ Item {
   }
   readonly property string bootFollowTarget: {
     if (bootSetting !== "follow") return ""
-    var d = Designs.byId(activeDesignId)
+    var d = Designs.byId(activeDesignId, root.userDesigns)
     return d && d.boot === true ? d.id : ""
   }
   readonly property int bootPreviewsVersion: service && service.bootPreviewsVersion !== undefined ? service.bootPreviewsVersion : 0
@@ -697,7 +698,7 @@ Item {
   // setting on "follow".
   function bootUseStyling(id, persist) {
     if (root.bootApplying) return
-    var d = Designs.byId(id)
+    var d = Designs.byId(id, root.userDesigns)
     if (d && d.boot === true) root.setBoot(id)
     else root.snapshotAndApply(id, persist === undefined ? true : persist)
   }
@@ -720,10 +721,10 @@ Item {
     if (bootSetting === "stock") return "Untouched"
     if (bootSetting === "theme") return "Theme colors"
     if (bootSetting === "follow") {
-      var d = Designs.byId(activeDesignId)
+      var d = Designs.byId(activeDesignId, root.userDesigns)
       return d && d.boot === true ? "Match lock (" + d.name + ")" : "Match lock (no twin)"
     }
-    var picked = Designs.byId(bootSetting)
+    var picked = Designs.byId(bootSetting, root.userDesigns)
     return picked ? picked.name : bootSetting
   }
   readonly property bool bootResync: service && service.bootResync !== undefined ? service.bootResync : true
@@ -810,7 +811,7 @@ Item {
     if (bootSetting.indexOf("snapshot:") === 0) return bootSetting
     if (bootSetting.indexOf("custom:") === 0 || bootSetting.indexOf("video:") === 0) return bootSetting
     if (bootSetting === "follow") {
-      var d = Designs.byId(activeDesignId)
+      var d = Designs.byId(activeDesignId, root.userDesigns)
       return d && d.boot === true ? d.id : "snapshot:" + activeDesignId
     }
     return bootSetting
@@ -821,12 +822,12 @@ Item {
     if (w === "stock") return root.tr("Untouched")
     if (w === "theme") return root.tr("Theme colors")
     if (w.indexOf("snapshot:") === 0) {
-      var sd = Designs.byId(w.substring(9))
+      var sd = Designs.byId(w.substring(9), root.userDesigns)
       return root.tr("%1 (snapshot)").arg(sd ? sd.name : w.substring(9))
     }
     if (w.indexOf("custom:") === 0) return w.substring(7)
     if (w.indexOf("video:") === 0) return w.substring(6).replace(/\.[^.]+$/, "")
-    var d = Designs.byId(w)
+    var d = Designs.byId(w, root.userDesigns)
     return d ? d.name : w
   }
 
@@ -873,7 +874,7 @@ Item {
     root.mainTab = root.requestedTab.length > 0 ? root.requestedTab : "styling"
     root.requestedTab = ""
     root.category = "all"
-    var idx = Designs.indexOf(root.activeDesignId)
+    var idx = Designs.indexOf(root.activeDesignId, root.userDesigns)
     root.selectedIndex = idx >= 0 ? idx : 0
     if (root.service) {
       if (typeof root.service.rescanUserDesigns === "function") root.service.rescanUserDesigns()
@@ -936,7 +937,7 @@ Item {
     if (id === root.category) return
     var current = root.selectedDesign ? root.selectedDesign.id : ""
     root.category = id
-    var list = Designs.inCategory(id)
+    var list = Designs.inCategory(id, root.userDesigns)
     var keep = -1
     for (var i = 0; i < list.length; i++) if (list[i].id === current) keep = i
     root.selectedIndex = keep >= 0 ? keep : 0
@@ -1195,7 +1196,7 @@ Item {
       root.setCategory("custom")
       Qt.callLater(function() {
         root.selectById(id)
-        var d = Designs.byId(id)
+        var d = Designs.byId(id, root.userDesigns)
         if (d) root.openEditor(d)
       })
     }
@@ -1203,7 +1204,7 @@ Item {
       if (!root.opened) return
       Qt.callLater(function() {
         root.selectById(id)
-        var d = Designs.byId(id)
+        var d = Designs.byId(id, root.userDesigns)
         if (d) root.openDesigner(d)
       })
     }
@@ -1233,7 +1234,7 @@ Item {
   }
 
   function useDesign(id, dismissAfter) {
-    if (!Designs.byId(String(id)) || selectDesignProc.running) return
+    if (!Designs.byId(String(id), root.userDesigns) || selectDesignProc.running) return
     root.selectionError = ""
     if (root.service && typeof root.service.setDesign === "function") {
       if (root.service.setDesign(id)) {
@@ -1296,6 +1297,7 @@ Item {
         anchors.fill: parent
         designId: root.activeDesignId
         revision: root.service ? root.service.designsRevision : 0
+        userDesigns: root.userDesigns
         twelveHour: root.twelveHour
         wallpaperBlur: root.wallpaperBlurValue
         wallpaperDim: root.wallpaperDimShift
@@ -1519,9 +1521,9 @@ Item {
                                                   : root.tr("%1 designs match “%2”").arg(root.designs.length).arg(root.searchText.trim()))
                   + " · " + root.tr("Esc clears")
               if (root.mainTab === "favorites") return root.tr("%1 starred with F").arg(root.designs.length)
-              if (root.mainTab === "animation") return root.tr("%1 animated lock screens").arg(Designs.animations().length)
+              if (root.mainTab === "animation") return root.tr("%1 animated lock screens").arg(Designs.animations(root.userDesigns).length)
               if (root.mainTab === "editor") return root.bootEditing.length > 0 ? root.tr("Editing %1").arg(root.bootEditing) : root.tr("Make a matching lock screen and boot screen")
-              return (root.mainTab === "styling" ? root.tr("%1 lock screen stylings").arg(Designs.stylings().length) + " · " : "") + root.currentThemeName + " · " + root.tr("Follows your theme")
+              return (root.mainTab === "styling" ? root.tr("%1 lock screen stylings").arg(Designs.stylings(root.userDesigns).length) + " · " : "") + root.currentThemeName + " · " + root.tr("Follows your theme")
             }
             textFormat: Text.PlainText
             color: root.wallpaperBroken ? root.danger : root.muted
@@ -1682,7 +1684,7 @@ Item {
             Text {
               id: activeLabel
               anchors.centerIn: parent
-              text: root.selectionError || root.tr("Active: %1").arg(Designs.byId(root.activeDesignId) ? Designs.byId(root.activeDesignId).name : root.activeDesignId)
+              text: root.selectionError || root.tr("Active: %1").arg(Designs.byId(root.activeDesignId, root.userDesigns) ? Designs.byId(root.activeDesignId, root.userDesigns).name : root.activeDesignId)
               textFormat: Text.PlainText
               color: root.foreground
               font.family: root.fontFamily
@@ -2807,7 +2809,7 @@ Item {
                   }
 
                   Text {
-                    text: root.tr("%1 as a still").arg(Designs.byId(root.activeDesignId) ? Designs.byId(root.activeDesignId).name : root.tr("current"))
+                    text: root.tr("%1 as a still").arg(Designs.byId(root.activeDesignId, root.userDesigns) ? Designs.byId(root.activeDesignId, root.userDesigns).name : root.tr("current"))
                     textFormat: Text.PlainText
                     color: root.muted
                     font.family: root.fontFamily
@@ -3208,8 +3210,8 @@ Item {
           model: {
             var r = root.service ? root.service.designsRevision : 0
             return [
-              { id: "styling", name: "Styling", count: Designs.stylings().length },
-              { id: "animation", name: "Animation", count: Designs.animations().length },
+              { id: "styling", name: "Styling", count: Designs.stylings(root.userDesigns).length },
+              { id: "animation", name: "Animation", count: Designs.animations(root.userDesigns).length },
               { id: "favorites", name: "Favorites", count: root.favoriteDesigns().length },
               { id: "boot", name: "Boot screen", count: 0 },
               { id: "settings", name: "Settings", count: 0 }
@@ -3426,6 +3428,7 @@ Item {
               anchors.fill: parent
               designId: root.selectedDesign ? root.selectedDesign.id : root.activeDesignId
               revision: root.service ? root.service.designsRevision : 0
+              userDesigns: root.userDesigns
               twelveHour: root.twelveHour
               wallpaperBlur: root.wallpaperBlurValue
               wallpaperDim: root.wallpaperDimShift
@@ -3676,6 +3679,7 @@ Item {
                     stillTextureSize: Qt.size(root.thumbWidth, root.thumbHeight)
                     designId: cell.modelData.id
                     revision: root.service ? root.service.designsRevision : 0
+                    userDesigns: root.userDesigns
                     twelveHour: root.twelveHour
                     wallpaperBlur: root.wallpaperBlurValue
                     wallpaperDim: root.wallpaperDimShift
@@ -4105,6 +4109,7 @@ Item {
         anchors.fill: parent
         designId: root.selectedDesign ? root.selectedDesign.id : Designs.DEFAULT_ID
         revision: root.service ? root.service.designsRevision : 0
+        userDesigns: root.userDesigns
         twelveHour: root.twelveHour
         wallpaperBlur: root.wallpaperBlurValue
         wallpaperDim: root.wallpaperDimShift

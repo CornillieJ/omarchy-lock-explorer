@@ -213,6 +213,7 @@ Item {
               anchors.fill: parent
               designId: editor.design ? editor.design.id : ""
               revision: editor.service ? editor.service.designsRevision : 0
+              userDesigns: editor.service && editor.service.userDesigns ? editor.service.userDesigns : []
               backgroundPath: editor.service ? editor.service.backgroundPath : ""
               backgroundVersion: editor.service ? editor.service.backgroundVersion : 0
               wallpaperBlur: editor.service && editor.service.wallpaperBlurValue !== undefined ? editor.service.wallpaperBlurValue : -1

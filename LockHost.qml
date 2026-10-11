@@ -7,6 +7,8 @@ Item {
 
   property string designId: Designs.DEFAULT_ID
   property int revision: 0
+  // Service.userDesigns, the scanned ~/.config/omarchy/lock-designs.
+  property var userDesigns: []
   property bool fadeIn: false
 
   property string backgroundPath: ""
@@ -86,7 +88,7 @@ Item {
 
   readonly property var design: {
     var r = revision
-    return Designs.resolve(designId)
+    return Designs.resolve(designId, userDesigns)
   }
   readonly property bool isUserDesign: design && design.path ? true : false
   readonly property string userLocalPath: isUserDesign ? decodeURIComponent(String(design.path).replace(/^file:\/\//, "")) : ""
