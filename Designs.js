@@ -77,6 +77,9 @@ var DESIGNS = [
   { id: "marquee", file: "Marquee.qml", name: "Marquee", description: "Digits bigger than the screen, cut off at the bottom edge", tags: ["type"] },
   { id: "meridian", file: "Meridian.qml", name: "Meridian", description: "One line down the middle, time left, day right, field across", tags: ["minimal"] },
   { id: "blueprint", file: "Blueprint.qml", name: "Blueprint", description: "A drafting sheet: the time dimensioned, a title block, the sign-in as a detail", tags: ["type", "dark"] },
+  { id: "receipt", file: "Receipt.qml", name: "Receipt", description: "The lock screen on till paper: date, time and user as the lines, the PIN to pay", tags: ["type", "fun", "cards"] },
+  { id: "metro", file: "Metro.qml", name: "Metro", description: "The day as a transit line, a station an hour, the train where the time is", tags: ["clock", "type"] },
+  { id: "seismograph", file: "Seismograph.qml", name: "Seismograph", description: "A strip chart that records every key; a wrong password is a quake", tags: ["reactive", "dark"], anim: true },
   // Seasonal: their own palettes, listed under the Seasonal nav.
   { id: "ghosts", file: "Ghosts.qml", name: "Ghosts", description: "Sheet ghosts drift over your wallpaper, eyes on the field, a BOO on a wrong password", tags: ["seasonal", "reactive"], anim: true },
   { id: "cobweb", file: "Cobweb.qml", name: "Cobweb", description: "A dewy web in the corner and a spider that comes down as you type", tags: ["seasonal", "dark", "reactive"], anim: true },

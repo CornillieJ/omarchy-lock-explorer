@@ -39,14 +39,16 @@ omarchy-shell lock explore
 <tr><td align="center"><img src="media/designs/forge.jpg" width="200" alt="Forge"><br><sub>Forge</sub></td><td align="center"><img src="media/designs/mainframe.jpg" width="200" alt="Mainframe"><br><sub>Mainframe</sub></td><td align="center"><img src="media/designs/beacon.jpg" width="200" alt="Beacon"><br><sub>Beacon</sub></td><td align="center"><img src="media/designs/supernova.jpg" width="200" alt="Supernova"><br><sub>Supernova</sub></td></tr>
 <tr><td align="center"><img src="media/designs/binary.jpg" width="200" alt="Binary"><br><sub>Binary</sub></td><td align="center"><img src="media/designs/tracking.jpg" width="200" alt="Tracking"><br><sub>Tracking</sub></td><td align="center"><img src="media/designs/login.jpg" width="200" alt="Login"><br><sub>Login</sub></td><td align="center"><img src="media/designs/keycode.jpg" width="200" alt="Keycode"><br><sub>Keycode</sub></td></tr>
 <tr><td align="center"><img src="media/designs/core.jpg" width="200" alt="Core"><br><sub>Core</sub></td><td align="center"><img src="media/designs/panel.jpg" width="200" alt="Panel"><br><sub>Panel</sub></td><td align="center"><img src="media/designs/statusline.jpg" width="200" alt="Statusline"><br><sub>Statusline</sub></td><td align="center"><img src="media/designs/blueprint.jpg" width="200" alt="Blueprint"><br><sub>Blueprint</sub></td></tr>
-<tr><td align="center"><img src="media/designs/ghosts.jpg" width="200" alt="Ghosts"><br><sub>Ghosts</sub></td><td align="center"><img src="media/designs/cobweb.jpg" width="200" alt="Cobweb"><br><sub>Cobweb</sub></td></tr>
+<tr><td align="center"><img src="media/designs/ghosts.jpg" width="200" alt="Ghosts"><br><sub>Ghosts</sub></td><td align="center"><img src="media/designs/cobweb.jpg" width="200" alt="Cobweb"><br><sub>Cobweb</sub></td><td align="center"><img src="media/designs/receipt.jpg" width="200" alt="Receipt"><br><sub>Receipt</sub></td><td align="center"><img src="media/designs/metro.jpg" width="200" alt="Metro"><br><sub>Metro</sub></td></tr>
+<tr><td align="center"><img src="media/designs/seismograph.jpg" width="200" alt="Seismograph"><br><sub>Seismograph</sub></td></tr>
 </table>
 
 Weather fetches from wttr.in (same location as the bar widget), Music reads MPRIS players, System shows uptime, memory, load and battery.
 Motion loops a video you pick. Pond, Constellation and Sparks react to your typing. Storm, Eyes and River play their clip when you unlock.
 
 Ghosts and Cobweb are seasonal: they keep their own colors instead of the theme's and sit under the Seasonal nav
-in the explorer and the side panel. Blueprint dimensions the time on a drafting sheet in the theme's colors.
+in the explorer and the side panel. Blueprint dimensions the time on a drafting sheet in the theme's colors, Receipt
+prints it on till paper, Metro lays the day out as a transit line, and Seismograph records every key on a strip chart.
 
 Cipher through Statusline are drawn by `ttfx`, the terminal text effects Omarchy ships: the clock or
 your branding logo is animated a character at a time, in your theme colors, and a wrong password
