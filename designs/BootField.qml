@@ -59,7 +59,7 @@ Row {
     border.width: 1
     border.color: input.activeFocus ? field.accent : Qt.rgba(field.fg.r, field.fg.g, field.fg.b, 0.15)
 
-    TextInput {
+    TypedInput {
       id: input
       anchors.fill: parent
       anchors.leftMargin: Style.space(10)

@@ -1,6 +1,7 @@
 import QtQuick
 import qs.Commons
 import qs.Commons as Commons
+import "designs"
 import "Designer.js" as D
 import "ExplorerStrings.js" as UiText
 
@@ -83,7 +84,7 @@ Item {
       border.width: 1
       border.color: entry.activeFocus ? field.accent : field.line
 
-      TextInput {
+      TypedInput {
         id: entry
         anchors.fill: parent
         anchors.leftMargin: Style.space(8)
@@ -123,7 +124,7 @@ Item {
         border.width: 1
         border.color: numberEntry.activeFocus ? field.accent : field.line
 
-        TextInput {
+        TypedInput {
           id: numberEntry
           anchors.fill: parent
           anchors.leftMargin: Style.space(8)
@@ -327,7 +328,7 @@ Item {
         color: field.well
         border.width: 1
         border.color: hexEntry.activeFocus ? field.accent : field.line
-        TextInput {
+        TypedInput {
           id: hexEntry
           anchors.fill: parent
           anchors.leftMargin: Style.space(8)

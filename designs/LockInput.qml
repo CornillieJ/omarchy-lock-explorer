@@ -2,7 +2,7 @@ import QtQuick
 import qs.Commons
 import qs.Commons as Commons
 
-TextInput {
+TypedInput {
   id: input
 
   property var lock: null
@@ -23,7 +23,9 @@ TextInput {
   // Only while pam_u2f actually has an assertion open, though: with no key
   // plugged in there is nothing to protect the keystrokes from, and refusing
   // them would leave the user with no way in.
-  readOnly: lock ? (lock.inputBlocked === true || lock.authenticatingPassword || (lock.fido2Active && lock.fido2Authenticating && !lock.fido2NeedsPin)) : true
+  readonly property bool inert: lock ? (lock.inputBlocked === true || lock.authenticatingPassword || (lock.fido2Active && lock.fido2Authenticating && !lock.fido2NeedsPin)) : true
+  // The key handler below says when a key may type.
+  typing: false
   color: Commons.Color.lock.text
   selectionColor: Commons.Color.lock.selection
   selectedTextColor: Commons.Color.lock.text
@@ -105,6 +107,8 @@ TextInput {
     } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_E) {
       if (lock.showPasswordToggle && !lock.fido2Active) lock.togglePasswordVisible()
       event.accepted = true
+    } else if (!input.inert) {
+      input.editKey(event)
     }
   }
 }

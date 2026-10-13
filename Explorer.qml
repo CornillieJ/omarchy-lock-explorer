@@ -1549,7 +1549,7 @@ Item {
             border.width: 1
             border.color: root.searching ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.15)
 
-            TextInput {
+            TypedInput {
               id: searchInput
               anchors.left: parent.left
               anchors.right: searchHint.left
@@ -2111,7 +2111,7 @@ Item {
                       font.pixelSize: Style.font.bodySmall
                     }
 
-                    TextInput {
+                    TypedInput {
                       id: customDelayInput
                       anchors.fill: parent
                       anchors.leftMargin: Style.space(10)

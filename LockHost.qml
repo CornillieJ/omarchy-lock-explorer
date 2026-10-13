@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell.Io
+import "designs"
 import "Designs.js" as Designs
 
 Item {
@@ -344,7 +345,7 @@ Item {
         border.width: 1
         border.color: host.failureMessage.length > 0 ? "#c96a6a" : "#565b63"
 
-        TextInput {
+        TypedInput {
           id: emergencyInput
           anchors.fill: parent
           anchors.margins: 14
@@ -354,7 +355,7 @@ Item {
           color: "#eeeeee"
           font.pixelSize: 18
           enabled: host.inputEnabled && !host.authenticatingPassword
-          readOnly: host.inputBlocked
+          typing: !host.inputBlocked
           Keys.onPressed: host.wakeRequested()
           onTextChanged: host.passwordTextEdited(text)
           onAccepted: host.submitPassword(text)

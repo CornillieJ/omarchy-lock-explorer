@@ -1560,7 +1560,7 @@ Item {
             color: Qt.rgba(designer.foreground.r, designer.foreground.g, designer.foreground.b, 0.07)
             border.width: 1
             border.color: nameEntry.activeFocus ? designer.accent : designer.line
-            TextInput {
+            TypedInput {
               id: nameEntry
               anchors.fill: parent
               anchors.leftMargin: Style.space(8)
