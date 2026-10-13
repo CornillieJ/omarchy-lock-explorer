@@ -178,12 +178,12 @@ DesignBase {
                 required property var modelData
                 width: 42; height: 42; radius: 21
                 opacity: modelData.can ? 1 : 0.35
-                color: lock.withAlpha(Color.lock.text, controlArea.containsMouse && modelData.can ? 0.2 : 0.1)
+                color: lock.withAlpha(Commons.Color.lock.text, controlArea.containsMouse && modelData.can ? 0.2 : 0.1)
                 Behavior on color { ColorAnimation { duration: 120 } }
                 Text {
                   anchors.centerIn: parent
                   text: control.modelData.glyph
-                  color: Color.lock.text
+                  color: Commons.Color.lock.text
                   font.family: Style.font.family
                   font.pixelSize: 20
                 }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import qs.Commons
+import qs.Commons as Commons
 
 // The time as a marquee: digits bigger than the screen, cut off by its bottom
 // edge, and a quiet field above them.
@@ -27,7 +28,7 @@ DesignBase {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: -Math.round(height * 0.34)
     text: lock.clock("HH:mm")
-    color: lock.withAlpha(Color.lock.text, 0.92)
+    color: lock.withAlpha(Commons.Color.lock.text, 0.92)
     font.family: Style.font.family
     font.pixelSize: Math.round(parent.height * 0.62)
     font.weight: Font.Black
@@ -44,7 +45,7 @@ DesignBase {
     spacing: 6
     Text {
       text: lock.date("dddd").toUpperCase()
-      color: Color.lock.text
+      color: Commons.Color.lock.text
       font.family: Style.font.family
       font.pixelSize: Style.font.heading
       font.weight: Font.DemiBold
@@ -52,7 +53,7 @@ DesignBase {
     }
     Text {
       text: lock.date("d MMMM yyyy")
-      color: lock.withAlpha(Color.lock.text, 0.65)
+      color: lock.withAlpha(Commons.Color.lock.text, 0.65)
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       font.letterSpacing: 2
@@ -70,7 +71,7 @@ DesignBase {
       anchors.right: parent.right
       text: lock.greeting() + ", " + lock.displayName
       textFormat: Text.PlainText
-      color: lock.withAlpha(Color.lock.text, 0.8)
+      color: lock.withAlpha(Commons.Color.lock.text, 0.8)
       font.family: Style.font.family
       font.pixelSize: Style.font.body
     }
@@ -92,7 +93,7 @@ DesignBase {
       showLockGlyph: true
       textAlignment: TextInput.AlignLeft
       placeholder: lock.tr("Enter password")
-      color: lock.withAlpha(Color.lock.background, 0.55)
+      color: lock.withAlpha(Commons.Color.lock.background, 0.55)
     }
     Text {
       opacity: lock.snapshotMode ? 0 : 1
@@ -100,7 +101,7 @@ DesignBase {
         : (lock.authenticatingPassword ? lock.tr("Checking…")
            : (lock.fingerprintConfigured ? lock.fingerprintHint(lock.tr("Touch sensor or type password")) : lock.tr("Enter to unlock")))
       textFormat: Text.PlainText
-      color: lock.errorState ? Color.lock.textError : lock.withAlpha(Color.lock.text, 0.5)
+      color: lock.errorState ? Commons.Color.lock.textError : lock.withAlpha(Commons.Color.lock.text, 0.5)
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
       font.letterSpacing: 2

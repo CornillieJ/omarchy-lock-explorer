@@ -285,9 +285,9 @@ Item {
     width: mediaRow.implicitWidth + 20
     height: 40
     radius: Math.min(20, base.chromeRadius)
-    color: withAlpha(Color.background, 0.72)
+    color: withAlpha(Commons.Color.background, 0.72)
     border.width: 1
-    border.color: withAlpha(Color.lock.text, 0.12)
+    border.color: withAlpha(Commons.Color.lock.text, 0.12)
 
     component MediaButton: Rectangle {
       id: mediaButton
@@ -299,12 +299,12 @@ Item {
       radius: Math.min(15, base.chromeRadius)
       anchors.verticalCenter: parent ? parent.verticalCenter : undefined
       opacity: available ? 1 : 0.35
-      color: base.withAlpha(Color.lock.text, mediaArea.containsMouse && available ? 0.18 : 0.08)
+      color: base.withAlpha(Commons.Color.lock.text, mediaArea.containsMouse && available ? 0.18 : 0.08)
       Behavior on color { ColorAnimation { duration: 120 } }
       Text {
         anchors.centerIn: parent
         text: mediaButton.glyph
-        color: base.withAlpha(Color.lock.text, 0.85)
+        color: base.withAlpha(Commons.Color.lock.text, 0.85)
         font.family: Style.font.family
         font.pixelSize: 16
       }
@@ -347,7 +347,7 @@ Item {
         elide: Text.ElideRight
         text: lockMediaSource.title + (lockMediaSource.artist.length > 0 ? "  ·  " + lockMediaSource.artist : "")
         textFormat: Text.PlainText
-        color: Color.lock.text
+        color: Commons.Color.lock.text
         font.family: Style.font.family
         font.pixelSize: 13
       }
@@ -415,9 +415,9 @@ Item {
     width: Math.min(ownerText.implicitWidth + 24, Math.round(parent.width * 0.5))
     height: ownerText.height + 16
     radius: Math.min(15, base.chromeRadius)
-    color: withAlpha(Color.background, 0.72)
+    color: withAlpha(Commons.Color.background, 0.72)
     border.width: 1
-    border.color: withAlpha(Color.lock.text, 0.25)
+    border.color: withAlpha(Commons.Color.lock.text, 0.25)
 
     Text {
       id: ownerText
@@ -427,7 +427,7 @@ Item {
       textFormat: Text.PlainText
       wrapMode: Text.Wrap
       horizontalAlignment: Text.AlignHCenter
-      color: Color.lock.text
+      color: Commons.Color.lock.text
       font.family: Style.font.family
       font.pixelSize: 13
     }

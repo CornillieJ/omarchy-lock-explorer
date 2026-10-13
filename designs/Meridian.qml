@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import qs.Commons
+import qs.Commons as Commons
 
 // One vertical line down the middle. The time keeps to its left, the day to
 // its right, and the field sits across it.
@@ -26,7 +27,7 @@ DesignBase {
     anchors.topMargin: Math.round(parent.height * 0.12)
     anchors.bottomMargin: Math.round(parent.height * 0.12)
     width: 1
-    color: lock.withAlpha(Color.lock.text, 0.35)
+    color: lock.withAlpha(Commons.Color.lock.text, 0.35)
   }
 
   // Left of the line: the time, flush against it.
@@ -36,7 +37,7 @@ DesignBase {
     anchors.verticalCenter: parent.verticalCenter
     anchors.verticalCenterOffset: -Math.round(parent.height * 0.12)
     text: lock.clock("HH:mm")
-    color: Color.lock.text
+    color: Commons.Color.lock.text
     font.family: Style.font.family
     font.pixelSize: Math.round(Style.font.baseSize * 8)
     font.weight: Font.Light
@@ -54,14 +55,14 @@ DesignBase {
     spacing: 8
     Text {
       text: lock.date("dddd")
-      color: Color.lock.text
+      color: Commons.Color.lock.text
       font.family: Style.font.family
       font.pixelSize: Style.font.title
       font.weight: Font.DemiBold
     }
     Text {
       text: lock.date("d MMMM")
-      color: lock.withAlpha(Color.lock.text, 0.65)
+      color: lock.withAlpha(Commons.Color.lock.text, 0.65)
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       font.letterSpacing: 2
@@ -74,7 +75,7 @@ DesignBase {
         anchors.verticalCenter: parent.verticalCenter
         text: lock.displayName
         textFormat: Text.PlainText
-        color: lock.withAlpha(Color.lock.text, 0.8)
+        color: lock.withAlpha(Commons.Color.lock.text, 0.8)
         font.family: Style.font.family
         font.pixelSize: Style.font.body
       }
@@ -96,7 +97,7 @@ DesignBase {
       outlineThickness: 1
       showLockGlyph: false
       placeholder: lock.tr("Type password")
-      color: lock.withAlpha(Color.lock.background, 0.75)
+      color: lock.withAlpha(Commons.Color.lock.background, 0.75)
     }
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
@@ -105,7 +106,7 @@ DesignBase {
         : (lock.authenticatingPassword ? lock.tr("Checking…")
            : (lock.fingerprintConfigured ? lock.fingerprintHint(lock.tr("Touch sensor or type password")) : lock.tr("Enter unlocks")))
       textFormat: Text.PlainText
-      color: lock.errorState ? Color.lock.textError : lock.withAlpha(Color.lock.text, 0.5)
+      color: lock.errorState ? Commons.Color.lock.textError : lock.withAlpha(Commons.Color.lock.text, 0.5)
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
       font.letterSpacing: 2

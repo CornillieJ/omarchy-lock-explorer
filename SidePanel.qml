@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Designs.js" as Designs
 
@@ -98,7 +99,7 @@ BorderSurface {
       elide: Text.ElideRight
       text: button.label
       textFormat: Text.PlainText
-      color: button.primary ? Color.background : side.fg
+      color: button.primary ? Commons.Color.background : side.fg
       font.family: side.explorer.fontFamily
       font.pixelSize: Style.font.bodySmall
       font.weight: button.primary ? Font.DemiBold : Font.Normal
@@ -186,7 +187,7 @@ BorderSurface {
         width: parent.width
         height: Math.round(width * 9 / 16)
         radius: side.explorer.cornerRadius
-        color: Color.background
+        color: Commons.Color.background
         border.width: 1
         border.color: Qt.rgba(side.fg.r, side.fg.g, side.fg.b, 0.2)
         clip: true
@@ -293,7 +294,7 @@ BorderSurface {
           text: side.explorer.searchText
           color: side.fg
           selectionColor: side.explorer.accent
-          selectedTextColor: Color.background
+          selectedTextColor: Commons.Color.background
           font.family: side.explorer.fontFamily
           font.pixelSize: Style.font.bodySmall
           onTextEdited: side.explorer.searchText = text
@@ -468,7 +469,7 @@ BorderSurface {
           width: side.rowThumbWidth
           height: side.rowThumbHeight
           radius: side.explorer.cornerRadius
-          color: Color.background
+          color: Commons.Color.background
           border.width: 1
           border.color: row.active ? side.explorer.accent : Qt.rgba(side.fg.r, side.fg.g, side.fg.b, 0.18)
           clip: true

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import qs.Commons
+import qs.Commons as Commons
 
 // A boarding pass: the stub carries you, the pass carries the time, and the
 // gate is the password.
@@ -21,7 +22,7 @@ DesignBase {
   component Label: Text {
     property string caption: ""
     text: caption.toUpperCase()
-    color: lock.withAlpha(Color.lock.text, 0.5)
+    color: lock.withAlpha(Commons.Color.lock.text, 0.5)
     font.family: Style.font.family
     font.pixelSize: Style.font.caption
     font.letterSpacing: 3
@@ -40,9 +41,9 @@ DesignBase {
       width: 260
       height: 300
       radius: 6
-      color: lock.withAlpha(Color.lock.background, 0.9)
+      color: lock.withAlpha(Commons.Color.lock.background, 0.9)
       border.width: 1
-      border.color: lock.withAlpha(Color.lock.text, 0.14)
+      border.color: lock.withAlpha(Commons.Color.lock.text, 0.14)
 
       Column {
         anchors.left: parent.left
@@ -56,7 +57,7 @@ DesignBase {
           Text {
             text: lock.displayName
             textFormat: Text.PlainText
-            color: Color.lock.text
+            color: Commons.Color.lock.text
             font.family: Style.font.family
             font.pixelSize: Style.font.heading
             font.weight: Font.DemiBold
@@ -68,7 +69,7 @@ DesignBase {
           Text {
             text: lock.hostName
             textFormat: Text.PlainText
-            color: lock.withAlpha(Color.lock.text, 0.8)
+            color: lock.withAlpha(Commons.Color.lock.text, 0.8)
             font.family: Style.font.family
             font.pixelSize: Style.font.body
           }
@@ -80,14 +81,14 @@ DesignBase {
     Item {
       width: 22
       height: 300
-      Rectangle { anchors.fill: parent; color: lock.withAlpha(Color.lock.background, 0.9) }
+      Rectangle { anchors.fill: parent; color: lock.withAlpha(Commons.Color.lock.background, 0.9) }
       Rectangle { anchors.fill: parent; anchors.topMargin: 6; anchors.bottomMargin: 6; color: "transparent"
         Column {
           anchors.centerIn: parent
           spacing: 10
           Repeater {
             model: 18
-            Rectangle { width: 6; height: 6; radius: 3; color: lock.withAlpha(Color.lock.text, 0.22); anchors.horizontalCenter: parent.horizontalCenter }
+            Rectangle { width: 6; height: 6; radius: 3; color: lock.withAlpha(Commons.Color.lock.text, 0.22); anchors.horizontalCenter: parent.horizontalCenter }
           }
         }
       }
@@ -98,9 +99,9 @@ DesignBase {
       width: 640
       height: 300
       radius: 6
-      color: lock.withAlpha(Color.lock.background, 0.9)
+      color: lock.withAlpha(Commons.Color.lock.background, 0.9)
       border.width: 1
-      border.color: lock.withAlpha(Color.lock.text, 0.14)
+      border.color: lock.withAlpha(Commons.Color.lock.text, 0.14)
 
       Rectangle {
         anchors.top: parent.top
@@ -108,7 +109,7 @@ DesignBase {
         anchors.right: parent.right
         height: 6
         radius: 3
-        color: Color.accent
+        color: Commons.Color.accent
       }
 
       Column {
@@ -120,7 +121,7 @@ DesignBase {
         Label { caption: "Departure" }
         Text {
           text: lock.clock("HH:mm")
-          color: Color.lock.text
+          color: Commons.Color.lock.text
           font.family: Style.font.family
           font.pixelSize: Math.round(Style.font.baseSize * 4.6)
           font.weight: Font.Bold
@@ -138,7 +139,7 @@ DesignBase {
         Text {
           anchors.right: parent.right
           text: lock.date("ddd d MMM")
-          color: Color.lock.text
+          color: Commons.Color.lock.text
           font.family: Style.font.family
           font.pixelSize: Style.font.heading
         }
@@ -164,7 +165,7 @@ DesignBase {
           shakeOnFail: true
           textAlignment: TextInput.AlignLeft
           placeholder: lock.tr("Type your password")
-          color: lock.withAlpha(Color.lock.text, 0.06)
+          color: lock.withAlpha(Commons.Color.lock.text, 0.06)
         }
       }
     }
@@ -178,7 +179,7 @@ DesignBase {
     text: lock.errorState ? lock.failureMessage
       : (lock.fingerprintConfigured ? lock.fingerprintHint(lock.tr("Touch sensor or type password")) : lock.tr("Press Enter to unlock"))
     textFormat: Text.PlainText
-    color: lock.errorState ? Color.lock.textError : lock.withAlpha(Color.lock.text, 0.5)
+    color: lock.errorState ? Commons.Color.lock.textError : lock.withAlpha(Commons.Color.lock.text, 0.5)
     font.family: Style.font.family
     font.pixelSize: Style.font.bodySmall
     font.letterSpacing: 2
