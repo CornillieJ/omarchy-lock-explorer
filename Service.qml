@@ -36,14 +36,14 @@ Item {
   readonly property string designId: designOverride.length > 0 ? designOverride : configuredDesignId
   readonly property bool designHasClip: {
     var r = designsRevision
-    var d = Designs.byId(designId)
+    var d = Designs.byId(designId, userDesigns)
     return !!(d && d.clip)
   }
   // The video file behind the current clip design; user ClipDesigns get their
   // clipFile filled in by the lock-designs scan.
   readonly property string designClipPath: {
     var r = designsRevision
-    var d = Designs.byId(designId)
+    var d = Designs.byId(designId, userDesigns)
     if (!d || !d.clip || !d.clipFile) return ""
     return home + "/.config/omarchy/lock-videos/" + d.clipFile
   }
@@ -362,6 +362,67 @@ Item {
     return true
   }
 
+  // What `omarchy-shell lock explore` opens: the side panel, which has a
+  // button for the full explorer, or the full explorer straight away. Saved on
+  // the plugin entry as `openAs`. An entry from before the side panel has
+  // settings on it and no `openAs`, and keeps opening the full explorer; a new
+  // install opens the panel. writeEntry() puts the answer on the entry with
+  // the first setting saved, so it does not flip once there is one.
+  property string openAsOverride: ""
+  readonly property string configuredOpenAs: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (!entry || String(entry.id || "") !== pluginId) continue
+      if (entry.openAs === "panel" || entry.openAs === "full") return entry.openAs
+      return settingKeys(entry).length > 0 ? "full" : "panel"
+    }
+    return "panel"
+  }
+  readonly property string openAs: openAsOverride.length > 0 ? openAsOverride : configuredOpenAs
+
+  function setOpenAs(value) {
+    var v = String(value || "")
+    if (v !== "panel" && v !== "full") return false
+    openAsOverride = v
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      current.openAs = v
+      writeEntry(current)
+    }
+    logEvent("open-as=" + v)
+    return true
+  }
+
+  // The side panel's first-open tour has been through, or skipped. Saved on
+  // the plugin entry as `tourSeen`, so it shows once per install.
+  property int tourSeenOverride: -1
+  readonly property bool configuredTourSeen: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && entry.tourSeen !== undefined)
+        return entry.tourSeen === true || String(entry.tourSeen) === "true"
+    }
+    return false
+  }
+  readonly property bool tourSeen: tourSeenOverride >= 0 ? tourSeenOverride === 1 : configuredTourSeen
+
+  function setTourSeen(value) {
+    var on = value === true || value === "true" || value === 1 || value === "1" || value === "on"
+    if (on === tourSeen) return true
+    tourSeenOverride = on ? 1 : 0
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (on) current.tourSeen = true
+      else delete current.tourSeen
+      writeEntry(current)
+    }
+    return true
+  }
+
   // After an unlock, a notification for the failed attempts made while you
   // were away. On by default: it says nothing unless somebody tried. Saved on
   // the plugin entry as `awayReportOff` only when it is turned off.
@@ -480,7 +541,7 @@ Item {
 
   function setFavorite(id, on) {
     var key = String(id || "")
-    if (key.length === 0 || !Designs.byId(key)) return false
+    if (key.length === 0 || !Designs.byId(key, root.userDesigns)) return false
     var next = favorites.filter(function(f) { return f !== key })
     if (on) next.push(key)
     favoritesOverride = next
@@ -751,6 +812,7 @@ Item {
   // LocalSettings is what keeps two changes made back to back from clobbering
   // each other while the file watcher catches up.
   function writeEntry(entry) {
+    if (entry.openAs === undefined) entry.openAs = root.openAs
     localSettings.remember(entry)
     saveSettingsBackup(entry)
     return shell.updateEntryInline(pluginId, entry)
@@ -894,6 +956,208 @@ Item {
     return true
   }
 
+  // Previous, play or pause, and next on the lock screen for whatever is
+  // playing, with its title. Off by default: a locked screen says nothing
+  // about what is playing unless asked to. Saved on the plugin entry as
+  // `mediaControls`, and only on the screen the password goes in.
+  property int mediaControlsOverride: -1
+  readonly property bool configuredMediaControls: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId) return entry.mediaControls === true
+    }
+    return false
+  }
+  readonly property bool mediaControls: mediaControlsOverride >= 0 ? mediaControlsOverride === 1 : configuredMediaControls
+
+  function setMediaControls(value) {
+    var on = value === true || value === "true" || value === 1 || value === "1" || value === "on"
+    var off = value === false || value === "false" || value === 0 || value === "0" || value === "off"
+    if (!on && !off) return false
+
+    mediaControlsOverride = on ? 1 : 0
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (on) current.mediaControls = true
+      else delete current.mediaControls
+      writeEntry(current)
+    }
+    logEvent("media-controls=" + (on ? "on" : "off"))
+    return true
+  }
+
+  // The design can follow the Omarchy theme. While this is on, the design
+  // picked in the explorer is remembered for the theme that is active, and a
+  // theme change brings that theme's design back; a theme with nothing
+  // remembered keeps whatever is up. Saved on the plugin entry as `followTheme`
+  // and `themeDesigns` ({ theme name: design id }). Off by default, and the
+  // map stays when it is turned off, so turning it on again finds it.
+  property int followThemeOverride: -1
+  readonly property bool configuredFollowTheme: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId) return entry.followTheme === true
+    }
+    return false
+  }
+  readonly property bool followTheme: followThemeOverride >= 0 ? followThemeOverride === 1 : configuredFollowTheme
+  // The entry may load after the theme name did; the check runs again then.
+  onConfiguredFollowThemeChanged: followThemeDesign()
+  property var themeDesignsOverride: null
+  readonly property var configuredThemeDesigns: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (!entry || String(entry.id || "") !== pluginId) continue
+      var map = entry.themeDesigns
+      return map && typeof map === "object" && !Array.isArray(map) ? map : {}
+    }
+    return {}
+  }
+  readonly property var themeDesigns: themeDesignsOverride ? themeDesignsOverride : configuredThemeDesigns
+
+  // themeDesigns with the current theme set to `id`; also the new override.
+  function rememberThemeDesign(id) {
+    var map = Util.cloneJson(themeDesigns) || {}
+    if (bootCurrentTheme.length > 0) map[bootCurrentTheme] = String(id)
+    themeDesignsOverride = map
+    return map
+  }
+
+  function setFollowTheme(value) {
+    var on = value === true || value === "true" || value === 1 || value === "1" || value === "on"
+    var off = value === false || value === "false" || value === 0 || value === "0" || value === "off"
+    if (!on && !off) return false
+
+    followThemeOverride = on ? 1 : 0
+    // Turning it on starts from the design that is up, so the current theme
+    // has one straight away.
+    var map = on ? rememberThemeDesign(designId) : themeDesigns
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (on) current.followTheme = true
+      else delete current.followTheme
+      if (Object.keys(map).length > 0) current.themeDesigns = map
+      writeEntry(current)
+    }
+    logEvent("follow-theme=" + (on ? "on" : "off"))
+    return true
+  }
+
+  // On a theme change, and once at startup for a theme switched while the
+  // shell was off: the design remembered for the theme that is now active.
+  function followThemeDesign() {
+    if (!followTheme || rotateDesigns !== "off" || bootCurrentTheme.length === 0) return
+    var want = themeDesigns[bootCurrentTheme]
+    if (!want || String(want) === designId || !Designs.byId(String(want), root.userDesigns)) return
+    logEvent("theme-design " + bootCurrentTheme + " -> " + want)
+    setDesign(String(want))
+  }
+
+  // A line for whoever finds the computer, drawn by DesignBase in the bottom
+  // left corner of every design. Saved on the plugin entry as `ownerMessage`;
+  // empty, the default, draws nothing. Whitespace is collapsed and the
+  // length capped so a corner note stays one.
+  property var ownerMessageOverride: null
+  readonly property string configuredOwnerMessage: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && entry.ownerMessage !== undefined) return String(entry.ownerMessage)
+    }
+    return ""
+  }
+  readonly property string ownerMessage: ownerMessageOverride !== null ? ownerMessageOverride : configuredOwnerMessage
+  readonly property int ownerMessageMaxLength: 120
+
+  function setOwnerMessage(value) {
+    var text = String(value === undefined || value === null ? "" : value).replace(/\s+/g, " ").trim()
+    if (text.length > ownerMessageMaxLength) return false
+    ownerMessageOverride = text
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (text.length > 0) current.ownerMessage = text
+      else delete current.ownerMessage
+      writeEntry(current)
+    }
+    logEvent("owner-message=" + (text.length > 0 ? "set" : "cleared"))
+    return true
+  }
+
+  // The favorites can take turns: the next one each time the screen locks,
+  // or a new one each day. Saved on the plugin entry as `rotateDesigns` (lock
+  // or day; absent is off) and, for the daily turn, `rotatedOn`, the day it
+  // last turned. Fewer than two favorites leaves nothing to rotate. While it
+  // is on the rotation has the design, so the theme does not
+  // (followThemeDesign).
+  readonly property var rotateDesignsOptions: ["off", "lock", "day"]
+  property string rotateDesignsOverride: ""
+  readonly property string configuredRotateDesigns: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && (entry.rotateDesigns === "lock" || entry.rotateDesigns === "day"))
+        return entry.rotateDesigns
+    }
+    return "off"
+  }
+  readonly property string rotateDesigns: rotateDesignsOverride.length > 0 ? rotateDesignsOverride : configuredRotateDesigns
+  property string rotatedOnOverride: ""
+  readonly property string configuredRotatedOn: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && entry.rotatedOn) return String(entry.rotatedOn)
+    }
+    return ""
+  }
+  readonly property string rotatedOn: rotatedOnOverride.length > 0 ? rotatedOnOverride : configuredRotatedOn
+
+  function setRotateDesigns(value) {
+    var v = String(value || "")
+    if (rotateDesignsOptions.indexOf(v) === -1) return false
+    rotateDesignsOverride = v
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (v === "off") {
+        delete current.rotateDesigns
+        delete current.rotatedOn
+      } else {
+        current.rotateDesigns = v
+      }
+      writeEntry(current)
+    }
+    logEvent("rotate-designs=" + v)
+    return true
+  }
+
+  function localDay() {
+    var d = new Date()
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2)
+  }
+
+  // As the screen locks: the next favorite, when it is time for one. A
+  // current design that is not a favorite hands over to the first.
+  function rotateDesign() {
+    if (rotateDesigns === "off") return
+    var pool = favorites.filter(function(id) { return !!Designs.byId(id, root.userDesigns) })
+    if (pool.length < 2) return
+    var day = localDay()
+    if (rotateDesigns === "day" && rotatedOn === day) return
+    var next = pool[(pool.indexOf(designId) + 1) % pool.length]
+    if (rotateDesigns === "day") rotatedOnOverride = day
+    logEvent("rotate-design " + designId + " -> " + next)
+    setDesign(next, rotateDesigns === "day" ? day : "turn")
+  }
+
   function setPowerActions(value) {
     var on = value === true || value === "true" || value === 1 || value === "1" || value === "on"
     var off = value === false || value === "false" || value === 0 || value === "0" || value === "off"
@@ -992,6 +1256,9 @@ Item {
 
   readonly property string userDesignsDir: home + "/.config/omarchy/lock-designs"
   property int designsRevision: 0
+  // Designs found in userDesignsDir, see Designs.fromUserFile. Every reader
+  // gets this list passed in rather than reading Designs.js module state.
+  property var userDesigns: []
 
   function rescanUserDesigns() {
     if (!userDesignsProc.running) userDesignsProc.running = true
@@ -1161,6 +1428,26 @@ Item {
   // the Settings tab's "Omarchy menu" row and `omarchy-shell lock setMenuEntry`
   // run extras/install.sh, which also takes them out again.
   readonly property string menuInstallPath: pluginDir + "/extras/install.sh"
+  // The lock in the bar (BarWidget.qml), a custom module in the bar layout
+  // of shell.json put there by extras/bar-icon.sh: the Settings tab's "Bar
+  // icon" row and `omarchy-shell lock setBarIcon on`. Whether it is there is
+  // read off the file, which the shell rewrites when the layout changes.
+  readonly property string barIconPath: pluginDir + "/extras/bar-icon.sh"
+  readonly property bool barIconShown: localSettings.barHasWidget
+
+  function setBarIcon(v) {
+    var on = v === true || v === 1 || v === "true" || v === "on" || v === "1"
+    if (barIconApplyProc.running) return false
+    barIconApplyProc.command = on ? ["bash", barIconPath] : ["bash", barIconPath, "--remove"]
+    barIconApplyProc.running = true
+    logEvent("bar-icon=" + (on ? "on" : "off"))
+    return true
+  }
+
+  Process {
+    id: barIconApplyProc
+    onExited: localSettings.reload()
+  }
 
   // Every embedded script that writes a file of the user's sources this first
   // (it arrives as the script's $0): an owner-checked, symlink-free directory
@@ -1198,7 +1485,7 @@ Item {
   function customizeDesign(id) {
     var d = String(id || "") === "new"
       ? { id: "new", file: "MyDesign.qml", name: "new", template: true }
-      : Designs.byId(String(id || ""))
+      : Designs.byId(String(id || ""), root.userDesigns)
     if (!d) return false
     if (d.path) { designCustomized(d.id, decodeURIComponent(d.path.replace(/^file:\/\//, ""))); return true }
     var source = d.template ? pluginDir + "/extras/lock-designs/" + d.file : pluginDir + "/designs/" + d.file
@@ -1236,7 +1523,7 @@ echo "$target"
         var target = String(customizeOut.text || "").trim()
         if (target.length === 0) return
         var d = Designs.fromUserFile(target)
-        Designs.setUser(Designs.USER.concat([d]))
+        root.userDesigns = root.userDesigns.concat([d])
         root.designsRevision += 1
         root.designCustomized(d.id, target)
         root.rescanUserDesigns()
@@ -1282,7 +1569,7 @@ echo "$target"
         if (target.length === 0) return
         var d = Designs.fromUserFile(target)
         d.designer = true
-        Designs.setUser(Designs.USER.concat([d]))
+        root.userDesigns = root.userDesigns.concat([d])
         root.designsRevision += 1
         root.designerDesignCreated(d.id, target)
         root.rescanUserDesigns()
@@ -1634,7 +1921,7 @@ printf "%s\\t%s\\n" "$target" "$base"
         d.anim = true
         d.clip = true
         if (parts.length > 1 && parts[1].trim().length > 0) d.clipFile = parts[1].trim()
-        Designs.setUser(Designs.USER.concat([d]))
+        root.userDesigns = root.userDesigns.concat([d])
         root.designsRevision += 1
         root.rescanUserDesigns()
         root.clipDesignAdded(d.id)
@@ -1647,7 +1934,7 @@ printf "%s\\t%s\\n" "$target" "$base"
   // video goes with it, unless the boot screen, the Motion video or the unlock
   // clip still point at it, or another design names it.
   function deleteDesign(id) {
-    var d = Designs.byId(String(id || ""))
+    var d = Designs.byId(String(id || ""), root.userDesigns)
     if (!d || !d.path) return false
     var file = decodeURIComponent(String(d.path).replace(/^file:\/\//, ""))
     if (file.indexOf(userDesignsDir + "/") !== 0) return false
@@ -1850,7 +2137,7 @@ echo "$out"
     var value = bootOverride.length > 0 ? bootOverride : configuredBoot
     if (value === "follow" || value === "stock" || value === "theme" || value === "rotate") return value
     if (value.indexOf("snapshot:") === 0 || value.indexOf("video:") === 0 || value.indexOf("custom:") === 0) return value
-    var d = Designs.byId(value)
+    var d = Designs.byId(value, root.userDesigns)
     return d && d.boot === true ? value : "stock"
   }
   property bool bootApplying: false
@@ -1863,7 +2150,7 @@ echo "$out"
     if (bootSetting === "rotate") return ""
     if (bootSetting.indexOf("snapshot:") === 0) return bootSetting
     if (bootSetting === "follow") {
-      var d = Designs.byId(designId)
+      var d = Designs.byId(designId, root.userDesigns)
       return d && d.boot === true ? d.id : ""
     }
     return bootSetting
@@ -1872,7 +2159,7 @@ echo "$out"
   function setBoot(value) {
     var v = String(value || "").trim().toLowerCase()
     if (v !== "follow" && v !== "stock" && v !== "theme" && v !== "rotate" && v.indexOf("video:") !== 0 && v.indexOf("custom:") !== 0 && v.indexOf("snapshot:") !== 0) {
-      var d = Designs.byId(v)
+      var d = Designs.byId(v, root.userDesigns)
       if (!d || d.boot !== true) return false
     }
     if (bootApplying) return false
@@ -1979,6 +2266,7 @@ echo "$out"
   // fresh snapshot (which also carries the entry geometry).
   signal bootResnapshotRequested(string designId, bool persist)
   signal exploreTabRequested(string tab)
+  signal exploreViewRequested(string view)
 
   function maybeResyncBoot() {
     if (!bootResync || bootApplying || !bootResyncArmed) return
@@ -2107,7 +2395,7 @@ echo "$out"
     logEvent("boot-clip=" + v)
     var appliedIsClip = bootApplied.indexOf("video:") === 0
     if (!appliedIsClip) {
-      var d = Designs.byId(bootApplied)
+      var d = Designs.byId(bootApplied, root.userDesigns)
       appliedIsClip = !!(d && d.bootKind === "clip")
     }
     if (appliedIsClip) applyBoot(true, bootApplied)
@@ -2340,25 +2628,38 @@ echo "$out"
     }
   }
 
+  // The Omarchy theme that is on: the boot screen resyncs its palette to it,
+  // and the design follows it when asked to (followThemeDesign).
   FileView {
     path: root.stateHome + "/omarchy/current/theme.name"
     watchChanges: true
     printErrors: false
-    onLoaded: { root.bootCurrentTheme = String(text()).trim(); root.maybeResyncBoot() }
+    onLoaded: { root.bootCurrentTheme = String(text()).trim(); root.maybeResyncBoot(); root.followThemeDesign() }
     onLoadFailed: root.bootCurrentTheme = ""
     onFileChanged: reload()
   }
 
-  function setDesign(id) {
-    var d = Designs.byId(String(id || ""))
+  // `how` says what kind of pick this is. Nothing: a pick, filed under the
+  // theme that is on while the design follows the theme. "all": a pick for
+  // every theme, which forgets the per-theme picks so this design shows
+  // whatever theme comes up. "turn", or a day: a rotation turn (rotateDesign),
+  // which is not a pick, so the theme does not remember it; the day is saved.
+  function setDesign(id, how) {
+    var d = Designs.byId(String(id || ""), root.userDesigns)
     if (!d) return false
     designOverride = d.id
+    var everywhere = how === "all"
+    var map = followTheme && !how ? rememberThemeDesign(d.id) : null
+    if (everywhere) themeDesignsOverride = {}
     if (shell && typeof shell.updateEntryInline === "function") {
       var current = pluginEntry()
       current.design = d.id
+      if (map) current.themeDesigns = map
+      if (everywhere) delete current.themeDesigns
+      if (how && how !== "turn" && !everywhere) current.rotatedOn = how
       writeEntry(current)
     }
-    logEvent("design=" + d.id)
+    logEvent("design=" + d.id + (everywhere ? " all-themes" : ""))
     if (bootSetting === "follow") applyBoot(false)
     return true
   }
@@ -2745,6 +3046,7 @@ echo "$out"
       return false
     }
 
+    rotateDesign()
     cancelUnlockAnimation()
     resetAuthenticationState()
     inputBlocked = false
@@ -3281,6 +3583,7 @@ echo "$out"
           fadeIn: true
           designId: root.showsInput(lockSurface.screen) ? root.designId : "companion"
           revision: root.designsRevision
+          userDesigns: root.userDesigns
           backgroundPath: root.backgroundPath
           backgroundVersion: root.backgroundVersion
           avatarPath: root.avatarPath
@@ -3290,10 +3593,12 @@ echo "$out"
           keyboardLayoutCount: root.keyboardLayoutCount
           batteryLow: root.batteryLow
           batteryPercent: root.batteryPercent
+          ownerMessage: root.ownerMessage
           onLayoutSwitchRequested: root.switchKeyboardLayout()
           capsLock: root.capsLock
           onCapsProbeRequested: root.probeCapsLock()
           powerActions: root.powerActions
+          mediaControls: root.mediaControls && root.showsInput(lockSurface.screen)
           onPowerActionRequested: function(action) { root.runPowerAction(action) }
           faceConfigured: root.faceConfigured
           fido2Configured: root.fido2Configured
@@ -3360,6 +3665,7 @@ echo "$out"
         anchors.fill: parent
         designId: root.previewDesignId.length > 0 ? root.previewDesignId : root.designId
         revision: root.designsRevision
+        userDesigns: root.userDesigns
         backgroundPath: root.backgroundPath
         backgroundVersion: root.backgroundVersion
         avatarPath: root.avatarPath
@@ -3390,6 +3696,7 @@ echo "$out"
         showAuthIcons: root.showAuthIcons
         batteryLow: root.batteryLow
         batteryPercent: root.batteryPercent
+        ownerMessage: root.ownerMessage
         // Hold the clip's last frame in the preview instead of snapping back
         // to the start; Esc (hidePreview) resets it.
         onUnlockFinished: {}
@@ -3669,9 +3976,10 @@ echo "$out"
           if (parts.length > 2 && parts[2].trim().length > 0) d.clipFile = parts[2].trim()
           return d
         })
-        var before = JSON.stringify(Designs.USER)
-        Designs.setUser(list)
-        if (JSON.stringify(list) !== before) root.designsRevision += 1
+        if (JSON.stringify(list) !== JSON.stringify(root.userDesigns)) {
+          root.userDesigns = list
+          root.designsRevision += 1
+        }
       }
     }
   }
@@ -4061,6 +4369,7 @@ echo "$out"
     QtObject {
       readonly property string designId: root.designId
       readonly property int designsRevision: root.designsRevision
+      readonly property var userDesigns: root.userDesigns
       readonly property string backgroundPath: root.backgroundPath
       readonly property int backgroundVersion: root.backgroundVersion
       readonly property string avatarPath: root.avatarPath
@@ -4082,7 +4391,16 @@ echo "$out"
       readonly property int wakeGrace: root.wakeInputGrace
       readonly property int defaultWakeGrace: root.defaultWakeGrace
       readonly property bool powerActions: root.powerActions
+      readonly property bool mediaControls: root.mediaControls
+      readonly property bool followTheme: root.followTheme
+      readonly property var themeDesigns: root.themeDesigns
+      readonly property string rotateDesigns: root.rotateDesigns
+      readonly property string ownerMessage: root.ownerMessage
+      readonly property int ownerMessageMaxLength: root.ownerMessageMaxLength
       readonly property bool awayReport: root.awayReport
+      readonly property string openAs: root.openAs
+      readonly property bool barIconShown: root.barIconShown
+      readonly property bool tourSeen: root.tourSeen
       readonly property bool lockOnKeyRemoval: root.lockOnKeyRemoval
       readonly property bool wakeOnKeyInsert: root.wakeOnKeyInsert
       readonly property var favorites: root.favorites
@@ -4140,9 +4458,10 @@ echo "$out"
       signal clipDesignAdded(string id)
       signal bootResnapshotRequested(string designId, bool persist)
       signal exploreTabRequested(string tab)
+      signal exploreViewRequested(string view)
       signal bootDesignLoaded(string name, string content)
 
-      function setDesign(id) { return root.setDesign(id) }
+      function setDesign(id, how) { return root.setDesign(id, how) }
       function customizeDesign(id) { return root.customizeDesign(id) }
       function createDesignerDesign(content) { return root.createDesignerDesign(content) }
       function deleteDesign(id) { return root.deleteDesign(id) }
@@ -4175,7 +4494,14 @@ echo "$out"
       function setWakeGrace(ms) { return root.setWakeGrace(ms) }
       function setFaceStart(value) { return root.setFaceStart(value) }
       function setPowerActions(value) { return root.setPowerActions(value) }
+      function setMediaControls(value) { return root.setMediaControls(value) }
+      function setFollowTheme(value) { return root.setFollowTheme(value) }
+      function setRotateDesigns(value) { return root.setRotateDesigns(value) }
+      function setOwnerMessage(value) { return root.setOwnerMessage(value) }
       function setAwayReport(value) { return root.setAwayReport(value) }
+      function setOpenAs(value) { return root.setOpenAs(value) }
+      function setBarIcon(value) { return root.setBarIcon(value) }
+      function setTourSeen(value) { return root.setTourSeen(value) }
       function setLockOnKeyRemoval(value) { return root.setLockOnKeyRemoval(value) }
       function setWakeOnKeyInsert(value) { return root.setWakeOnKeyInsert(value) }
       function toggleFavorite(id) { return root.toggleFavorite(id) }
@@ -4224,6 +4550,7 @@ echo "$out"
     root.clipDesignAdded.connect(api.clipDesignAdded)
     root.bootResnapshotRequested.connect(api.bootResnapshotRequested)
     root.exploreTabRequested.connect(api.exploreTabRequested)
+    root.exploreViewRequested.connect(api.exploreViewRequested)
     root.bootDesignLoaded.connect(api.bootDesignLoaded)
     explorerApi = api
     Bridge.publish(api)
@@ -4297,6 +4624,15 @@ echo "$out"
     onTriggered: Quickshell.execDetached(["omarchy-shell", "osd", "close"])
   }
 
+  function summonExplorer(view) {
+    root.rescanUserDesigns()
+    root.watchLaunchOsd()
+    root.exploreViewRequested(view)
+    if (root.shell && typeof root.shell.summon === "function")
+      return root.shell.summon(root.pluginId, "{}") ? "ok" : "failed"
+    return "no-shell"
+  }
+
   IpcHandler {
     target: "lock"
 
@@ -4351,6 +4687,7 @@ echo "$out"
         wakeGraceMs: root.wakeInputGrace,
         faceStart: root.faceStart,
         powerActions: root.powerActions,
+        mediaControls: root.mediaControls,
         awayReport: root.awayReport,
         wallpaperBlur: root.wallpaperBlur,
         wallpaperDim: root.wallpaperDim,
@@ -4399,13 +4736,18 @@ echo "$out"
     }
 
     function designs(): string {
-      return JSON.stringify(Designs.all().map(function(d) {
+      return JSON.stringify(Designs.all(root.userDesigns).map(function(d) {
         return { id: d.id, name: d.name, description: d.description, active: d.id === root.designId }
       }))
     }
 
     function setDesign(id: string): string {
       return root.setDesign(id) ? "ok" : "unknown-design"
+    }
+
+    // The same, for every theme at once: the per-theme picks are forgotten.
+    function setDesignForAll(id: string): string {
+      return root.setDesign(id, "all") ? "ok" : "unknown-design"
     }
 
     function setKeepDisplayOn(value: string): string {
@@ -4424,12 +4766,70 @@ echo "$out"
       return root.setPowerActions(value) ? "ok" : "invalid-value"
     }
 
+    function mediaControls(): string {
+      return root.mediaControls ? "on" : "off"
+    }
+
+    function setMediaControls(value: string): string {
+      return root.setMediaControls(value) ? "ok" : "invalid-value"
+    }
+
+    function followTheme(): string {
+      return root.followTheme ? "on" : "off"
+    }
+
+    // on or off: remember a design per Omarchy theme and switch with the theme.
+    function setFollowTheme(value: string): string {
+      return root.setFollowTheme(value) ? "ok" : "invalid-value"
+    }
+
+    function rotateDesigns(): string {
+      return root.rotateDesigns
+    }
+
+    // off, lock or day: the favorites take turns on each lock, or daily.
+    function setRotateDesigns(value: string): string {
+      return root.setRotateDesigns(value) ? "ok" : "invalid-value"
+    }
+
+    function ownerMessage(): string {
+      return root.ownerMessage
+    }
+
+    // A line in the bottom left corner of every design; empty clears it.
+    function setOwnerMessage(value: string): string {
+      return root.setOwnerMessage(value) ? "ok" : "too-long"
+    }
+
     function awayReport(): string {
       return root.awayReport ? "on" : "off"
     }
 
     function setAwayReport(value: string): string {
       return root.setAwayReport(value) ? "ok" : "invalid-value"
+    }
+
+    function openAs(): string {
+      return root.openAs
+    }
+
+    // panel or full: what `explore` opens.
+    function setOpenAs(value: string): string {
+      return root.setOpenAs(value) ? "ok" : "invalid-value"
+    }
+
+    // The side panel with its first-open tour, again.
+    function tour(): string {
+      root.setTourSeen(false)
+      return root.summonExplorer("panel")
+    }
+
+    function barIcon(): string {
+      return root.barIconShown ? "on" : "off"
+    }
+
+    function setBarIcon(value: string): string {
+      return root.setBarIcon(value) ? "ok" : "invalid-value"
     }
 
     function lockOnKeyRemoval(): string {
@@ -4555,7 +4955,7 @@ echo "$out"
 
     function previewDesign(id: string): string {
       root.rescanUserDesigns()
-      if (!Designs.byId(String(id || ""))) return "unknown-design"
+      if (!Designs.byId(String(id || ""), root.userDesigns)) return "unknown-design"
       root.previewDesignId = String(id)
       root.previewUnlocking = false
       root.refreshBackground()
@@ -4591,7 +4991,7 @@ echo "$out"
 
     function previewUnlock(): string {
       if (!root.previewVisible) return "no-preview"
-      var pd = Designs.byId(root.previewDesignId.length > 0 ? root.previewDesignId : root.designId)
+      var pd = Designs.byId(root.previewDesignId.length > 0 ? root.previewDesignId : root.designId, root.userDesigns)
       if (pd && pd.clip) {
         root.previewClipPlaying = true
         return "ok"
@@ -4626,7 +5026,7 @@ echo "$out"
     }
 
     function editDesign(id: string): string {
-      var d = Designs.byId(String(id || ""))
+      var d = Designs.byId(String(id || ""), root.userDesigns)
       if (!d || !d.path) return "not-a-custom-design"
       Quickshell.execDetached(["omarchy-launch-editor", decodeURIComponent(d.path.replace(/^file:\/\//, ""))])
       return "ok"
@@ -4766,17 +5166,25 @@ echo "$out"
       return root.playSting() ? "ok" : "busy"
     }
 
+    // The side panel or the full explorer, whichever Settings > System >
+    // Opens as says.
     function explore(): string {
-      root.rescanUserDesigns()
-      root.watchLaunchOsd()
-      if (root.shell && typeof root.shell.summon === "function")
-        return root.shell.summon(root.pluginId, "{}") ? "ok" : "failed"
-      return "no-shell"
+      return root.summonExplorer(root.openAs)
+    }
+
+    // The same, whatever the setting says.
+    function explorePanel(): string {
+      return root.summonExplorer("panel")
+    }
+
+    function exploreFull(): string {
+      return root.summonExplorer("full")
     }
 
     // Open the built-in editor on a custom boot layout.
     function editBootLayout(name: string): string {
       root.loadBootDesign(String(name || ""))
+      root.exploreViewRequested("full")
       if (root.shell && typeof root.shell.summon === "function")
         return root.shell.summon(root.pluginId, "{}") ? "ok" : "failed"
       return "no-shell"
@@ -4787,6 +5195,7 @@ echo "$out"
     function exploreTab(tab: string): string {
       root.rescanUserDesigns()
       root.exploreTabRequested(String(tab || "styling"))
+      root.exploreViewRequested("full")
       if (root.shell && typeof root.shell.summon === "function")
         return root.shell.summon(root.pluginId, "{}") ? "ok" : "failed"
       return "no-shell"

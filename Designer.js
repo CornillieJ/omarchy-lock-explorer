@@ -17,6 +17,14 @@
 var MARKER = "designer:1:"
 var VERSION = 1
 var DEFAULT_NAME = "My Layout"
+// The corners of the base's chrome (media strip, owner message), 0 to 24 px.
+// A layout from before the setting has none and gets the base default.
+var DEFAULT_CORNERS = 6
+
+function clampCorners(v) {
+  var n = Math.round(Number(v))
+  return isFinite(n) ? Math.max(0, Math.min(24, n)) : DEFAULT_CORNERS
+}
 
 // ------------------------------------------------------------------ anchors
 
@@ -507,7 +515,7 @@ function nextId(doc) {
 }
 
 function emptyDoc(name) {
-  return { v: VERSION, name: name || DEFAULT_NAME, nodes: [] }
+  return { v: VERSION, name: name || DEFAULT_NAME, corners: DEFAULT_CORNERS, nodes: [] }
 }
 
 // What a brand new design starts as: a wallpaper, the time, the date and a
@@ -535,7 +543,7 @@ function starterDoc(name) {
 function validate(doc) {
   if (!doc || typeof doc !== "object") return null
   if (!(doc.nodes instanceof Array)) return null
-  var out = { v: VERSION, name: String(doc.name || DEFAULT_NAME), nodes: [] }
+  var out = { v: VERSION, name: String(doc.name || DEFAULT_NAME), corners: clampCorners(doc.corners), nodes: [] }
   for (var i = 0; i < doc.nodes.length; i++) {
     var n = doc.nodes[i]
     if (!n || !KINDS[n.kind]) continue
@@ -569,8 +577,8 @@ function plainNode(n) {
   }
 }
 
-function docOf(nodes, name) {
-  var out = { v: VERSION, name: String(name || DEFAULT_NAME), nodes: [] }
+function docOf(nodes, name, corners) {
+  var out = { v: VERSION, name: String(name || DEFAULT_NAME), corners: clampCorners(corners), nodes: [] }
   for (var i = 0; i < (nodes || []).length; i++) out.nodes.push(plainNode(nodes[i]))
   return out
 }
@@ -663,6 +671,7 @@ function generate(doc, pluginId) {
   out.push("")
   out.push("DesignBase {")
   out.push("  id: lock")
+  out.push("  chromeRadius: " + clampCorners(doc.corners))
   out.push("  inputItem: " + (inputNode ? inputNode.id + ".inputItem" : "fallbackInput"))
   out.push("")
   out.push("  MouseArea {")

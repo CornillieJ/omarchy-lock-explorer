@@ -38,11 +38,17 @@ omarchy-shell lock explore
 <tr><td align="center"><img src="media/designs/vhs.jpg" width="200" alt="VHS"><br><sub>VHS</sub></td><td align="center"><img src="media/designs/horizon.jpg" width="200" alt="Event Horizon"><br><sub>Event Horizon</sub></td><td align="center"><img src="media/designs/orbit.jpg" width="200" alt="Orbit"><br><sub>Orbit</sub></td><td align="center"><img src="media/designs/screensaver.jpg" width="200" alt="Screensaver"><br><sub>Screensaver</sub></td></tr>
 <tr><td align="center"><img src="media/designs/forge.jpg" width="200" alt="Forge"><br><sub>Forge</sub></td><td align="center"><img src="media/designs/mainframe.jpg" width="200" alt="Mainframe"><br><sub>Mainframe</sub></td><td align="center"><img src="media/designs/beacon.jpg" width="200" alt="Beacon"><br><sub>Beacon</sub></td><td align="center"><img src="media/designs/supernova.jpg" width="200" alt="Supernova"><br><sub>Supernova</sub></td></tr>
 <tr><td align="center"><img src="media/designs/binary.jpg" width="200" alt="Binary"><br><sub>Binary</sub></td><td align="center"><img src="media/designs/tracking.jpg" width="200" alt="Tracking"><br><sub>Tracking</sub></td><td align="center"><img src="media/designs/login.jpg" width="200" alt="Login"><br><sub>Login</sub></td><td align="center"><img src="media/designs/keycode.jpg" width="200" alt="Keycode"><br><sub>Keycode</sub></td></tr>
-<tr><td align="center"><img src="media/designs/core.jpg" width="200" alt="Core"><br><sub>Core</sub></td><td align="center"><img src="media/designs/panel.jpg" width="200" alt="Panel"><br><sub>Panel</sub></td><td align="center"><img src="media/designs/statusline.jpg" width="200" alt="Statusline"><br><sub>Statusline</sub></td></tr>
+<tr><td align="center"><img src="media/designs/core.jpg" width="200" alt="Core"><br><sub>Core</sub></td><td align="center"><img src="media/designs/panel.jpg" width="200" alt="Panel"><br><sub>Panel</sub></td><td align="center"><img src="media/designs/statusline.jpg" width="200" alt="Statusline"><br><sub>Statusline</sub></td><td align="center"><img src="media/designs/blueprint.jpg" width="200" alt="Blueprint"><br><sub>Blueprint</sub></td></tr>
+<tr><td align="center"><img src="media/designs/ghosts.jpg" width="200" alt="Ghosts"><br><sub>Ghosts</sub></td><td align="center"><img src="media/designs/cobweb.jpg" width="200" alt="Cobweb"><br><sub>Cobweb</sub></td><td align="center"><img src="media/designs/receipt.jpg" width="200" alt="Receipt"><br><sub>Receipt</sub></td><td align="center"><img src="media/designs/metro.jpg" width="200" alt="Metro"><br><sub>Metro</sub></td></tr>
+<tr><td align="center"><img src="media/designs/seismograph.jpg" width="200" alt="Seismograph"><br><sub>Seismograph</sub></td></tr>
 </table>
 
 Weather fetches from wttr.in (same location as the bar widget), Music reads MPRIS players, System shows uptime, memory, load and battery.
 Motion loops a video you pick. Pond, Constellation and Sparks react to your typing. Storm, Eyes and River play their clip when you unlock.
+
+Ghosts and Cobweb are seasonal: they keep their own colors instead of the theme's and sit under the Seasonal nav
+in the explorer and the side panel. Blueprint dimensions the time on a drafting sheet in the theme's colors, Receipt
+prints it on till paper, Metro lays the day out as a transit line, and Seismograph records every key on a strip chart.
 
 Cipher through Statusline are drawn by `ttfx`, the terminal text effects Omarchy ships: the clock or
 your branding logo is animated a character at a time, in your theme colors, and a wrong password
@@ -69,7 +75,24 @@ stock lock screen, see [Remove](#remove): Omarchy does not always switch its own
 omarchy-shell lock explore
 ```
 
-Arrows (or H J K L) to browse, Tab to go through Styling, Animation and Favorites, Space for full-size preview, Enter to select, Esc to close. Scroll with the mouse wheel or PageUp/PageDown. `U` opens Settings, and `B` the boot screen. `?` lists every key the explorer takes.
+On a new install this opens the side panel: the selected design drawn live at the top, Lock now
+and a full screen preview under it, then search and the designs as a list under Favorites,
+Styling and Animation. Up and Down (or J K) move through the list and the preview follows, Enter
+makes the selected design the lock screen and keeps the panel up, Left and Right (or Tab) change
+tab, `F` stars, `/` searches, and Esc closes. `O`, or the button at the bottom, opens the full
+explorer on the same design; `O` there goes back to the panel.
+
+The first time the panel opens it walks through three hints (Enter for the next, Esc to skip);
+*Side panel tour* in Settings, or `omarchy-shell lock tour`, shows them again.
+
+*Bar icon*, under System in Settings, puts a lock in the bar: a click opens the same as
+`omarchy-shell lock explore`, a right click the full explorer. Like the menu entry it is a
+choice, since a plugin cannot change the bar when it is installed; it goes at the end of the
+right section, and `omarchy bar move lock-explorer` moves it. *Opens as*, in the same section, picks which of
+the two `omarchy-shell lock explore` opens first. An install from before the side panel keeps opening the full explorer. `omarchy-shell lock
+explorePanel` and `exploreFull` open one or the other whatever the setting says.
+
+In the full explorer: arrows (or H J K L) to browse, Tab to go through Styling, Animation and Favorites, Space for full-size preview, Enter to select, Esc to close. Scroll with the mouse wheel or PageUp/PageDown. `U` opens Settings, and `B` the boot screen. `?` lists every key the explorer takes.
 
 Settings is one page in sections -- Unlock, Look, Password field, Screen and power, Sign-in and
 security, System -- with a line of help under every choice. It scrolls with the mouse wheel, the
@@ -173,9 +196,16 @@ o.bind("SUPER + SHIFT + L", "Lock screen explorer", "omarchy-shell lock explore"
 Other commands:
 
 ```sh
+omarchy-shell lock explorePanel          # the side panel, whatever Opens as says
+omarchy-shell lock exploreFull           # the full explorer
+omarchy-shell lock openAs
+omarchy-shell lock setOpenAs panel       # or full: what `explore` opens first
+omarchy-shell lock barIcon
+omarchy-shell lock setBarIcon on         # the lock in the bar, or off
 omarchy-shell lock designs
 omarchy-shell lock design
 omarchy-shell lock setDesign zen
+omarchy-shell lock setDesignForAll zen        # for every theme, forgetting the per-theme picks
 omarchy-shell lock previewDesign split   # you can type in the preview
 omarchy-shell lock previewFail           # show the failure state in the preview
 omarchy-shell lock hidePreview
@@ -196,6 +226,12 @@ omarchy-shell lock menuEntry
 omarchy-shell lock setMenuEntry on     # launcher + Omarchy menu entries, or off
 omarchy-shell lock boot
 omarchy-shell lock setBoot follow            # stock, follow, or a design id with a twin
+omarchy-shell lock followTheme
+omarchy-shell lock setFollowTheme on         # remember a design per theme and switch with it
+omarchy-shell lock rotateDesigns
+omarchy-shell lock setRotateDesigns lock     # off, lock or day: the favorites take turns
+omarchy-shell lock ownerMessage
+omarchy-shell lock setOwnerMessage "If found, call +45 ..."   # empty clears it
 ```
 
 With more than one monitor you can pick which one shows the sign-in with `setInputMonitor`.
@@ -244,6 +280,34 @@ their text stays readable, and one value for all of them would undo that. Design
 solid color or their own art (Aurora, Neon, the ttfx designs and so on) are not affected. By hand:
 `omarchy-shell lock setWallpaperBlur sharp` and `setWallpaperDim darker`, `design` for either to
 go back. They are saved on the plugin entry as `wallpaperBlur` and `wallpaperDim`.
+
+### Design follows the theme
+
+**Design follows the theme** in Settings ties the lock screen to your Omarchy theme. While it is
+on, picking a design (Enter, or Use) remembers it for the theme that is active, and switching theme
+(`omarchy-theme-set` or the Omarchy menu) brings that theme's design back; a theme nothing has been
+picked under keeps whatever is up. Shift+Enter, or the All themes button on the card, picks a design
+for every theme at once and forgets the per-theme picks (`omarchy-shell lock setDesignForAll <id>`). Off by default: the same design shows whichever theme is active. By hand:
+`omarchy-shell lock setFollowTheme on` (`followTheme` to ask). Saved on the plugin entry as `followTheme`
+and `themeDesigns`, a map from theme name to design id, which stays when the setting is turned off
+so turning it on again finds it.
+
+### Rotate designs
+
+**Rotate designs** in Settings lets the favorites take turns: Each lock switches to the next
+favorite every time the screen locks, Each day switches once a day, on the first lock of the day.
+Star designs with `F` in the explorer to make them favorites; fewer than two leaves nothing to
+rotate. While the rotation is on it has the design, so Design follows the theme stands back. By
+hand: `omarchy-shell lock setRotateDesigns lock` (`day`, or `off`). Saved on the plugin entry as
+`rotateDesigns` and, for the daily turn, `rotatedOn`.
+
+### Owner message
+
+**Owner message** in Settings puts a line in the bottom left corner of every design, for whoever
+finds the computer: who to call, or where to bring it. Type it in the box and press Enter; empty it
+to show nothing. Up to 120 characters, shown as plain text. By hand:
+`omarchy-shell lock setOwnerMessage "If found, call +45 ..."`. Saved on the plugin entry as
+`ownerMessage`.
 
 ### Language
 
@@ -311,6 +375,12 @@ sleep, restart and shut down in the bottom right corner, each asking a second ti
 happens — handy on a machine that otherwise can only be powered off by holding the button,
 and worth leaving off anywhere a locked screen should do nothing but take a password.
 By hand: `omarchy-shell lock setPowerActions on`.
+
+"Media controls", off by default as well, puts what is playing at the top of the lock screen
+with previous, play or pause, and next, on the screen the password goes in. It shows only while
+a player has a track, the Music design carries the buttons on its own card, and a click on a
+blanked screen wakes it without touching the music. By hand:
+`omarchy-shell lock setMediaControls on`.
 
 "Report failed attempts", on by default, sends a notification after you unlock when somebody got
 the password or the security key wrong while you were away: how many times, and when the last one
@@ -590,6 +660,15 @@ is no longer booted (the old kernel is kept installed as a fallback, which is wh
 errored). Update the plugin -- it now installs the addon next to every Omarchy kernel image --
 then pick the boot screen again once in the explorer (`B`). The lock screen itself is
 unaffected.
+
+The boot screen keeps going back to the stock one after Omarchy updates while the explorer
+still shows it as applied, and `journalctl -g install-root.sh` only ever shows `theme`, never
+`addon`: `/boot` is mounted root-only on your install (`fmask=0077,dmask=0077` in `/etc/fstab`),
+and plugin versions up to 1.9.6 looked for the kernel image as your user, saw nothing there and
+quietly used the bake-and-rebuild path instead. That path depends on `/etc/plymouth/plymouthd.conf`,
+which Omarchy updates reset, so the next boot image rebuild brought the stock screen back. Update
+the plugin -- the root side now decides whether there is a kernel image to attach to -- then pick
+the boot screen again once.
 
 Designs show the theme color instead of your wallpaper (and the explorer header says the
 wallpaper failed to load): stock Omarchy ships Qt without a WebP decoder, so `.webp` wallpapers
