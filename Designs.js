@@ -71,7 +71,7 @@ var DESIGNS = [
   // through as the unlock, see UnlockClip.qml. One clip per design.
   { id: "storm", file: "Storm.qml", name: "Storm", clip: true, description: "Calm ridge, the lightning is your unlock", tags: ["motion", "dark"], boot: true, bootKind: "clip", clipFile: "omarchy-storm.mp4", credit: "@yamzeight", anim: true },
   { id: "eyes", file: "Eyes.qml", name: "Eyes", clip: true, description: "The eyes open up when you get in", tags: ["motion", "dark"], boot: true, bootKind: "clip", clipFile: "omarchy-eye.mp4", credit: "@yamzeight", anim: true },
-  { id: "river", file: "River.qml", name: "River", clip: true, description: "A painting that comes alive on unlock", tags: ["motion"], boot: true, bootKind: "clip", clipFile: "gruvbox-river.mp4", credit: "@yamzeight", anim: true }
+  { id: "river", file: "River.qml", name: "River", clip: true, description: "A painting that comes alive on unlock", tags: ["motion"], boot: true, bootKind: "clip", clipFile: "gruvbox-river.mp4", credit: "@yamzeight", anim: true },
   { id: "ticket", file: "Ticket.qml", name: "Ticket", description: "A boarding pass: the time departs, the password is the gate", tags: ["cards", "fun"] },
   { id: "marquee", file: "Marquee.qml", name: "Marquee", description: "Digits bigger than the screen, cut off at the bottom edge", tags: ["type"] },
   { id: "meridian", file: "Meridian.qml", name: "Meridian", description: "One line down the middle, time left, day right, field across", tags: ["minimal"] },
