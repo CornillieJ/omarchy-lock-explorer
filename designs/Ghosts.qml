@@ -9,7 +9,7 @@ import qs.Commons as Commons
 // design, so it keeps its own palette instead of the theme's.
 DesignBase {
   id: lock
-  inputItem: field.input
+  inputItem: input
   shakeOnFail: false
   flashOnFail: false
 
@@ -22,6 +22,8 @@ DesignBase {
   // the push a scare gives them (vx, vy) with its displacement (dx, dy).
   property var ghosts: []
   property real boo: 0        // 0..1, the BOO fading out
+  readonly property int lit: passwordText.length
+  readonly property int maxLittle: 20
   property real fright: 0     // 0..1, red eyes
   property real elapsed: 0
   property real lastTick: 0
@@ -73,6 +75,14 @@ DesignBase {
   Typing { lock: lock; onTyped: lock.nudge() }
 
   Wallpaper { anchors.fill: parent; lock: lock; blur: 1; dim: 0.5; vignette: true }
+
+  LockInput {
+    id: input
+    lock: lock
+    width: 1; height: 1
+    opacity: 0
+    anchors.centerIn: parent
+  }
   Rectangle { anchors.fill: parent; color: lock.withAlpha(lock.dusk, 0.55) }
 
   MouseArea {
@@ -214,7 +224,7 @@ DesignBase {
     id: column
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    anchors.verticalCenterOffset: -Math.round(lock.height * 0.04)
+    anchors.verticalCenterOffset: -Math.round(lock.height * 0.08)
     spacing: 30
 
     Column {
@@ -241,29 +251,139 @@ DesignBase {
       }
     }
 
-    Item {
-      id: fieldAnchor
-      anchors.horizontalCenter: parent.horizontalCenter
-      width: field.width
-      height: field.height
-      PasswordField {
-        id: field
-        lock: lock
-        anchors.fill: parent
-        width: 380
-        height: 56
-        radius: 28
-        showLockGlyph: false
-        shakeOnFail: true
-        color: Qt.rgba(0.08, 0.06, 0.16, 0.7)
-        textColor: lock.sheet
-        mutedColor: lock.withAlpha(lock.sheet, 0.5)
-        accentColor: lock.moon
-        errorColor: lock.blood
-        outlineColor: lock.withAlpha(lock.moon, 0.8)
-        placeholder: "Who goes there?"
+  }
+
+  // The little ones: one tiny ghost per character, in a row along the
+  // bottom, bobbing at their own pace. Their eyes go red with the others' on
+  // a wrong password; once the password is revealed each carries its letter.
+  Item {
+    id: fieldAnchor
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom
+    anchors.bottomMargin: Math.round(lock.height * 0.15)
+    width: Math.max(260, Math.min(lock.lit, lock.maxLittle) * 40 + 40)
+    height: 60
+
+    Row {
+      anchors.centerIn: parent
+      spacing: 12
+      Repeater {
+        model: Math.min(lock.lit, lock.maxLittle)
+        Item {
+          id: little
+          width: 28
+          height: 40
+          Component.onCompleted: { scale = 0.2; popIn.start() }
+          NumberAnimation on scale { id: popIn; from: 0.2; to: 1; duration: 260; easing.type: Easing.OutBack; running: false }
+          SequentialAnimation on y {
+            loops: Animation.Infinite
+            running: lock.animating
+            NumberAnimation { from: 0; to: -7; duration: 900 + (index % 4) * 170; easing.type: Easing.InOutSine }
+            NumberAnimation { from: -7; to: 0; duration: 900 + (index % 4) * 170; easing.type: Easing.InOutSine }
+          }
+          Canvas {
+            id: sheet
+            anchors.fill: parent
+            Connections {
+              target: lock
+              function onErrorStateChanged() { sheet.requestPaint() }
+              function onPasswordVisibleChanged() { sheet.requestPaint() }
+            }
+            onPaint: {
+              var ctx = getContext("2d")
+              ctx.reset()
+              ctx.clearRect(0, 0, width, height)
+              var w = 24, h = 30, x0 = (width - w) / 2, y0 = 4
+              ctx.fillStyle = lock.withAlpha(lock.moon, 0.35)
+              ctx.beginPath(); ctx.arc(width / 2, y0 + h * 0.5, w * 0.95, 0, 6.2832); ctx.fill()
+              ctx.beginPath()
+              ctx.moveTo(x0, y0 + w / 2)
+              ctx.arc(x0 + w / 2, y0 + w / 2, w / 2, Math.PI, 0)
+              ctx.lineTo(x0 + w, y0 + h)
+              for (var i = 0; i < 3; i++) {
+                var xa = x0 + w - (i + 1) * (w / 3), xm = xa + w / 6
+                ctx.quadraticCurveTo(xm, y0 + h + (i % 2 === 0 ? 5 : -2), xa, y0 + h)
+              }
+              ctx.closePath()
+              ctx.fillStyle = lock.withAlpha(lock.sheet, 0.92)
+              ctx.fill()
+              ctx.fillStyle = lock.errorState ? lock.blood : lock.dusk
+              ctx.beginPath(); ctx.ellipse(x0 + w * 0.27, y0 + w * 0.32, 4, 5.5); ctx.fill()
+              ctx.beginPath(); ctx.ellipse(x0 + w * 0.6, y0 + w * 0.32, 4, 5.5); ctx.fill()
+              if (lock.passwordVisible) {
+                ctx.fillStyle = lock.dusk
+                ctx.font = "bold 12px " + Style.font.family
+                ctx.textAlign = "center"
+                ctx.fillText(lock.passwordText.charAt(index), width / 2, y0 + h - 4)
+              }
+            }
+          }
+        }
+      }
+      // Waiting: the outline of the next one, breathing.
+      Canvas {
+        width: 28
+        height: 40
+        visible: lock.inputEnabled && !lock.authenticatingPassword
+        SequentialAnimation on opacity {
+          loops: Animation.Infinite
+          running: true
+          NumberAnimation { from: 0.9; to: 0.2; duration: 700; easing.type: Easing.InOutSine }
+          NumberAnimation { from: 0.2; to: 0.9; duration: 700; easing.type: Easing.InOutSine }
+        }
+        onPaint: {
+          var ctx = getContext("2d")
+          ctx.reset()
+          ctx.clearRect(0, 0, width, height)
+          var w = 24, h = 30, x0 = (width - w) / 2, y0 = 4
+          ctx.beginPath()
+          ctx.moveTo(x0, y0 + w / 2)
+          ctx.arc(x0 + w / 2, y0 + w / 2, w / 2, Math.PI, 0)
+          ctx.lineTo(x0 + w, y0 + h)
+          for (var i = 0; i < 3; i++) {
+            var xa = x0 + w - (i + 1) * (w / 3), xm = xa + w / 6
+            ctx.quadraticCurveTo(xm, y0 + h + (i % 2 === 0 ? 5 : -2), xa, y0 + h)
+          }
+          ctx.closePath()
+          ctx.strokeStyle = lock.withAlpha(lock.sheet, 0.8)
+          ctx.lineWidth = 1.5
+          ctx.setLineDash([3, 3])
+          ctx.stroke()
+        }
       }
     }
+
+    Rectangle {
+      anchors.bottom: parent.bottom
+      anchors.horizontalCenter: parent.horizontalCenter
+      width: parent.width
+      height: 1
+      color: lock.errorState ? lock.withAlpha(lock.blood, 0.7) : lock.withAlpha(lock.moon, 0.3)
+      Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+    }
+    EyeButton {
+      lock: lock
+      anchors.left: parent.right
+      anchors.leftMargin: 10
+      anchors.verticalCenter: parent.verticalCenter
+    }
+  }
+
+  Text {
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: fieldAnchor.top
+    anchors.bottomMargin: 14
+    opacity: lock.snapshotMode ? 0 : 1
+    text: lock.authenticatingPassword ? lock.tr("Checking…")
+      : (lock.errorState ? lock.failureMessage
+      : (lock.lit === 0 ? "Who goes there?"
+      : (lock.fingerprintConfigured ? lock.fingerprintHint(lock.tr("Type your password or touch the sensor")) : lock.tr("Type your password"))))
+    textFormat: Text.PlainText
+    color: lock.errorState ? lock.blood : lock.withAlpha(lock.moon, 0.7)
+    font.family: Style.font.family
+    font.pixelSize: Style.font.bodySmall
+    font.letterSpacing: 2
+    font.italic: lock.errorState
   }
 
   Text {
@@ -271,11 +391,10 @@ DesignBase {
     anchors.bottom: parent.bottom
     anchors.bottomMargin: 36
     opacity: lock.snapshotMode ? 0 : 1
-    text: lock.failedAttempts > 0
-      ? lock.tr(lock.failedAttempts === 1 ? "1 failed attempt" : "%1 failed attempts").arg(lock.failedAttempts)
-      : (lock.fingerprintConfigured ? lock.fingerprintHint(lock.tr("󰆠  Touch sensor or type password")) : lock.tr("Enter your password to unlock"))
+    visible: lock.failedAttempts > 0
+    text: lock.tr(lock.failedAttempts === 1 ? "1 failed attempt" : "%1 failed attempts").arg(lock.failedAttempts)
     textFormat: Text.PlainText
-    color: lock.failedAttempts > 0 ? lock.blood : lock.withAlpha(lock.moon, 0.6)
+    color: lock.blood
     font.family: Style.font.family
     font.pixelSize: Style.font.bodySmall
     font.letterSpacing: 2
