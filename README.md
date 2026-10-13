@@ -714,3 +714,10 @@ the launcher and menu entries — goes through `extras/safe-paths.sh`: the targe
 `$HOME` behind a chain of real, user-owned directories (a symlink anywhere in it stops the
 script), and a file is replaced by writing a temporary next to it and renaming it into place.
 Use `safe_dir` and `put_file` from there rather than `mkdir -p`, `cp` or `>` when adding one.
+
+Every text field is a `TypedInput` (`designs/TypedInput.qml`), a `TextInput` that stays read-only
+and types through its own key handler. A writable `TextInput` subscribes to the clipboard, and on
+Qt up to 6.12.0 that makes the shell read the whole clipboard offer, unbounded and on its main
+thread, whenever any program changes the clipboard (QTBUG-149610); a read-only one does not. The
+cost is that the fields take no paste and no input-method composition: type into them, or compose
+elsewhere. Use `TypedInput` for any new field rather than `TextInput` or a Controls `TextField`.

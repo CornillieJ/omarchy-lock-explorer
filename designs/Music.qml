@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell.Services.Mpris
 import qs.Commons
+import qs.Commons as Commons
 
 DesignBase {
   id: lock
@@ -64,7 +65,7 @@ DesignBase {
     anchors.left: parent.left
     anchors.margins: 56
     text: lock.clock("HH:mm")
-    color: Color.lock.text
+    color: Commons.Color.lock.text
     font.family: Style.font.family
     font.pixelSize: Math.round(Style.font.baseSize * 4)
     font.weight: Font.DemiBold
@@ -74,7 +75,7 @@ DesignBase {
     anchors.right: parent.right
     anchors.margins: 56
     text: lock.date("dddd d MMMM")
-    color: lock.withAlpha(Color.lock.text, 0.7)
+    color: lock.withAlpha(Commons.Color.lock.text, 0.7)
     font.family: Style.font.family
     font.pixelSize: Style.font.title
     font.letterSpacing: 2
@@ -89,9 +90,9 @@ DesignBase {
       width: nowPlaying.implicitWidth + 60
       height: nowPlaying.implicitHeight + 48
       radius: 22
-      color: lock.withAlpha(Color.lock.background, 0.7)
+      color: lock.withAlpha(Commons.Color.lock.background, 0.7)
       border.width: 1
-      border.color: lock.withAlpha(Color.lock.text, 0.12)
+      border.color: lock.withAlpha(Commons.Color.lock.text, 0.12)
       layer.enabled: true
       layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(0, 0, 0, 0.5); shadowBlur: 1.0; shadowVerticalOffset: 10 }
 
@@ -102,7 +103,7 @@ DesignBase {
 
         Rectangle {
           width: 150; height: 150; radius: 14
-          color: lock.withAlpha(Color.lock.text, 0.08)
+          color: lock.withAlpha(Commons.Color.lock.text, 0.08)
           clip: true
           anchors.verticalCenter: parent.verticalCenter
           Image {
@@ -116,7 +117,7 @@ DesignBase {
             anchors.centerIn: parent
             visible: !(lock.hasMedia && lock.artUrl.length > 0)
             text: "󰎆"
-            color: lock.withAlpha(Color.lock.text, 0.4)
+            color: lock.withAlpha(Commons.Color.lock.text, 0.4)
             font.family: Style.font.family
             font.pixelSize: Math.round(Style.font.baseSize * 4)
           }
@@ -128,7 +129,7 @@ DesignBase {
           width: 380
           Text {
             text: lock.hasMedia ? (lock.playing ? lock.tr("󰐊  NOW PLAYING") : lock.tr("󰏤  PAUSED")) : lock.tr("󰝛  NOTHING PLAYING")
-            color: Color.lock.borderActive
+            color: Commons.Color.lock.borderActive
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
             font.letterSpacing: 3
@@ -137,7 +138,7 @@ DesignBase {
             width: parent.width
             text: lock.hasMedia ? lock.title : lock.greeting() + ", " + lock.displayName
             textFormat: Text.PlainText
-            color: Color.lock.text
+            color: Commons.Color.lock.text
             font.family: Style.font.family
             font.pixelSize: Style.font.display
             font.weight: Font.DemiBold
@@ -149,7 +150,7 @@ DesignBase {
             width: parent.width
             text: lock.hasMedia ? lock.artist + (lock.album ? "  ·  " + lock.album : "") : lock.tr("Start something and it shows up here")
             textFormat: Text.PlainText
-            color: lock.withAlpha(Color.lock.text, 0.7)
+            color: lock.withAlpha(Commons.Color.lock.text, 0.7)
             font.family: Style.font.family
             font.pixelSize: Style.font.subtitle
             elide: Text.ElideRight
@@ -158,7 +159,7 @@ DesignBase {
             visible: lock.hasMedia && lock.identity.length > 0
             text: lock.identity
             textFormat: Text.PlainText
-            color: lock.withAlpha(Color.lock.text, 0.45)
+            color: lock.withAlpha(Commons.Color.lock.text, 0.45)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
@@ -208,7 +209,7 @@ DesignBase {
       height: 54
       radius: 27
       placeholder: lock.tr("Password")
-      color: lock.withAlpha(Color.lock.background, 0.7)
+      color: lock.withAlpha(Commons.Color.lock.background, 0.7)
     }
   }
 }
