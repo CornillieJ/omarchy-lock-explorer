@@ -4,6 +4,7 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 import "Designs.js" as Designs
+import "designs"
 
 // The side panel: the selected design drawn live on top, then search and the
 // designs as a list. It is what `omarchy-shell lock explore` opens first
@@ -283,7 +284,7 @@ BorderSurface {
         border.width: 1
         border.color: side.explorer.searching ? side.explorer.accent : Qt.rgba(side.fg.r, side.fg.g, side.fg.b, 0.15)
 
-        TextInput {
+        TypedInput {
           id: searchInput
           anchors.left: parent.left
           anchors.right: searchHint.left
