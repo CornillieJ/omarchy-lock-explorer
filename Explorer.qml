@@ -93,6 +93,13 @@ Item {
   }
   readonly property var openAsOptions: [{ id: "panel", name: root.tr("Side panel") }, { id: "full", name: root.tr("Full explorer") }]
   readonly property bool barIconShown: !!service && service.barIconShown === true
+  readonly property bool followTheme: !!service && service.followTheme === true
+  readonly property string rotateDesigns: service && service.rotateDesigns !== undefined ? String(service.rotateDesigns) : "off"
+  readonly property var rotateDesignsOptions: [{ id: "off", name: root.tr("Off") }, { id: "lock", name: root.tr("Each lock") }, { id: "day", name: root.tr("Each day") }]
+  readonly property string ownerMessage: service && service.ownerMessage !== undefined ? String(service.ownerMessage) : ""
+  readonly property int ownerMessageMaxLength: service && service.ownerMessageMaxLength ? service.ownerMessageMaxLength : 120
+  // The owner message box has the keyboard; the key catcher leaves it alone.
+  property bool ownerEditing: false
 
   // The side panel's first-open tour (drawn in SidePanel.qml): -1 is off.
   // It runs once, the first time the panel opens, and again from Settings.
@@ -150,8 +157,9 @@ Item {
 
   // Enter in the side panel: the design becomes the lock screen and the panel
   // stays, since trying the next one is the likely next move.
-  function useSelected() {
-    if (selectedDesign) root.useDesign(selectedDesign.id, false)
+  // `everywhere`: Shift+Enter, a pick for every theme while the design follows the theme.
+  function useSelected(everywhere) {
+    if (selectedDesign) root.useDesign(selectedDesign.id, false, everywhere)
   }
 
   // The side panel's keys. It has no pages of its own, so the ones that are
@@ -177,7 +185,7 @@ Item {
       root.fullPreview = false
       root.focusSearch()
     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-      root.useSelected()
+      root.useSelected(root.followTheme && (event.modifiers & Qt.ShiftModifier) !== 0)
       root.fullPreview = false
     } else if (event.key === Qt.Key_Space || event.key === Qt.Key_P) {
       root.fullPreview = !root.fullPreview
@@ -1224,6 +1232,21 @@ Item {
     root.service.setAwayReport(on)
   }
 
+  function setFollowTheme(on) {
+    if (!root.service || typeof root.service.setFollowTheme !== "function") return
+    root.service.setFollowTheme(on)
+  }
+
+  function setRotateDesigns(id) {
+    if (!root.service || typeof root.service.setRotateDesigns !== "function") return
+    root.service.setRotateDesigns(id)
+  }
+
+  function setOwnerMessage(text) {
+    if (!root.service || typeof root.service.setOwnerMessage !== "function") return
+    root.service.setOwnerMessage(text)
+  }
+
   function setLockOnKeyRemoval(on) {
     if (!root.service || typeof root.service.setLockOnKeyRemoval !== "function") return
     root.service.setLockOnKeyRemoval(on)
@@ -1400,11 +1423,12 @@ Item {
     }
   }
 
-  function useDesign(id, dismissAfter) {
+  function useDesign(id, dismissAfter, everywhere) {
     if (!Designs.byId(String(id)) || selectDesignProc.running) return
     root.selectionError = ""
+    var how = everywhere && root.followTheme ? "all" : undefined
     if (root.service && typeof root.service.setDesign === "function") {
-      if (root.service.setDesign(id)) {
+      if (root.service.setDesign(id, how)) {
         if (dismissAfter) root.dismiss()
       } else root.selectionError = "Could not select this lock design"
       return
@@ -1412,7 +1436,7 @@ Item {
     // The authentication service is intentionally private in Omarchy 4.0.3.
     // Use its existing settings command, never expose the PAM service to UI.
     selectDesignProc.dismissAfter = dismissAfter
-    selectDesignProc.command = ["omarchy-shell", "lock", "setDesign", String(id)]
+    selectDesignProc.command = ["omarchy-shell", "lock", how === "all" ? "setDesignForAll" : "setDesign", String(id)]
     selectDesignProc.running = true
   }
 
@@ -1428,8 +1452,8 @@ Item {
     }
   }
 
-  function apply() {
-    if (selectedDesign) root.useDesign(selectedDesign.id, true)
+  function apply(everywhere) {
+    if (selectedDesign) root.useDesign(selectedDesign.id, true, everywhere)
   }
 
   // Dedicated render surface for background snapshots. grabToImage needs a
@@ -1511,7 +1535,7 @@ Item {
       // it drifts, except while a real editor field wants it.
       onActiveFocusChanged: {
         if (!activeFocus && root.opened && root.bootEditing.length === 0 && !root.editing
-            && !root.designing && !root.customDelayEditing && !root.searching)
+            && !root.designing && !root.customDelayEditing && !root.ownerEditing && !root.searching)
           Qt.callLater(function() {
             // Asked again: a click into the search field moves focus there
             // before the field has said it is searching.
@@ -1563,7 +1587,7 @@ Item {
           return
         }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-          root.apply(); event.accepted = true
+          root.apply(root.followTheme && (event.modifiers & Qt.ShiftModifier) !== 0); event.accepted = true
         } else if (event.key === Qt.Key_Space || event.key === Qt.Key_P) {
           root.fullPreview = !root.fullPreview; event.accepted = true
         } else if (event.key === Qt.Key_C) {
@@ -2221,6 +2245,98 @@ Item {
                   options: root.reduceMotionChoices
                   current: root.reduceMotion
                   onPicked: function(id) { root.setReduceMotion(id) }
+                }
+
+                SettingRow {
+                  explorer: root
+                  label: root.tr("Design follows the theme")
+                  help: !root.followTheme
+                        ? root.tr("The same design shows whichever theme is active.")
+                        : (root.rotateDesigns !== "off"
+                           ? root.tr("Off while the designs rotate.")
+                           : root.tr("Each theme remembers the design picked while it is active, and a theme change brings it back.")
+                             + " " + root.tr("Enter picks for the theme that is on, Shift+Enter for all of them."))
+                  options: root.onOffOptions
+                  current: root.followTheme ? "on" : "off"
+                  onPicked: function(id) { root.setFollowTheme(id === "on") }
+                }
+
+                SettingRow {
+                  explorer: root
+                  label: root.tr("Rotate designs")
+                  help: root.rotateDesigns === "off"
+                        ? root.tr("The same design every time.")
+                        : (root.favoriteIds.length < 2
+                           ? root.tr("Star at least two designs as favorites (F) and they take turns.")
+                           : (root.rotateDesigns === "lock"
+                              ? root.tr("The favorites take turns: the next one each time the screen locks.")
+                              : root.tr("The favorites take turns: a new one each day.")))
+                  options: root.rotateDesignsOptions
+                  current: root.rotateDesigns
+                  onPicked: function(id) { root.setRotateDesigns(id) }
+                }
+
+                SettingRow {
+                  explorer: root
+                  label: root.tr("Owner message")
+                  help: root.ownerMessage.length > 0
+                        ? root.tr("Shown in the bottom left corner of every design, for whoever finds the computer.")
+                        : root.tr("Nothing is shown. A line here, such as who to call, sits in the bottom left corner of every design.")
+
+                  Rectangle {
+                    width: Style.space(440)
+                    height: Style.space(34)
+                    radius: root.cornerRadius
+                    color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.06)
+                    border.width: Math.max(1, Style.space(2))
+                    border.color: ownerInput.activeFocus ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.10)
+
+                    Text {
+                      anchors.verticalCenter: parent.verticalCenter
+                      anchors.right: parent.right
+                      anchors.rightMargin: Style.space(10)
+                      visible: ownerInput.activeFocus
+                      text: root.tr("Enter saves")
+                      color: root.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                    }
+
+                    Text {
+                      anchors.verticalCenter: parent.verticalCenter
+                      anchors.left: parent.left
+                      anchors.leftMargin: Style.space(10)
+                      visible: ownerInput.text.length === 0 && !ownerInput.activeFocus
+                      text: root.tr("If found, please call …")
+                      color: root.muted
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                    }
+
+                    // Enter saves, Escape puts the saved line back. Typing breaks
+                    // the binding to the saved line, so a change from elsewhere
+                    // (the IPC) is copied in by hand.
+                    TextInput {
+                      id: ownerInput
+                      anchors.fill: parent
+                      anchors.leftMargin: Style.space(10)
+                      anchors.rightMargin: Style.space(100)
+                      verticalAlignment: TextInput.AlignVCenter
+                      clip: true
+                      color: root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                      maximumLength: root.ownerMessageMaxLength
+                      text: root.ownerMessage
+                      onActiveFocusChanged: root.ownerEditing = activeFocus
+                      Keys.onEscapePressed: { text = root.ownerMessage; keyCatcher.forceActiveFocus() }
+                      Keys.onReturnPressed: { root.setOwnerMessage(text); keyCatcher.forceActiveFocus() }
+                      Connections {
+                        target: root
+                        function onOwnerMessageChanged() { if (!ownerInput.activeFocus) ownerInput.text = root.ownerMessage }
+                      }
+                    }
+                  }
                 }
               }
 
@@ -4047,6 +4163,25 @@ Item {
                   font.bold: true
                 }
                 MouseArea { anchors.fill: parent; onClicked: { root.selectedIndex = cell.index; root.apply() } }
+              }
+              // While the design follows the theme, Use picks for the theme that
+              // is on; this picks for all of them and forgets the per-theme picks.
+              Rectangle {
+                visible: root.followTheme
+                width: allLabel.implicitWidth + Style.space(16); height: Style.space(26); radius: 6
+                color: root.shade(0.6)
+                border.width: 1
+                border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.6)
+                Text {
+                  id: allLabel
+                  anchors.centerIn: parent
+                  text: root.tr("All themes") + "  ⇧⏎"
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                }
+                MouseArea { anchors.fill: parent; onClicked: { root.selectedIndex = cell.index; root.apply(true) } }
               }
               Rectangle {
                 width: custLabel.implicitWidth + Style.space(16); height: Style.space(26); radius: 6

@@ -31,6 +31,7 @@ Item {
   property int keyboardLayoutCount: 1
   property bool batteryLow: false
   property int batteryPercent: -1
+  property string ownerMessage: ""
   signal layoutSwitchRequested()
   property bool capsLock: false
   signal capsProbeRequested()
@@ -135,6 +136,7 @@ Item {
     if (it.keyboardLayoutCount !== undefined) it.keyboardLayoutCount = Qt.binding(function() { return host.keyboardLayoutCount })
     if (it.batteryLow !== undefined) it.batteryLow = Qt.binding(function() { return host.batteryLow })
     if (it.batteryPercent !== undefined) it.batteryPercent = Qt.binding(function() { return host.batteryPercent })
+    if (it.ownerMessage !== undefined) it.ownerMessage = Qt.binding(function() { return host.ownerMessage })
     if (it.capsLock !== undefined) it.capsLock = Qt.binding(function() { return host.capsLock })
     if (it.powerActions !== undefined) it.powerActions = Qt.binding(function() { return host.powerActions })
     if (it.mediaControls !== undefined) it.mediaControls = Qt.binding(function() { return host.mediaControls })
@@ -244,6 +246,7 @@ Item {
     function onFailedAttemptsChanged() { host.regrab() }
     function onBatteryLowChanged() { host.regrab() }
     function onBatteryPercentChanged() { host.regrab() }
+    function onOwnerMessageChanged() { host.regrab() }
     function onAuthenticatingPasswordChanged() { host.regrab() }
     function onFingerprintStatusChanged() { host.regrab() }
     function onFido2StatusChanged() { host.regrab() }

@@ -987,6 +987,176 @@ Item {
     return true
   }
 
+  // The design can follow the Omarchy theme. While this is on, the design
+  // picked in the explorer is remembered for the theme that is active, and a
+  // theme change brings that theme's design back; a theme with nothing
+  // remembered keeps whatever is up. Saved on the plugin entry as `followTheme`
+  // and `themeDesigns` ({ theme name: design id }). Off by default, and the
+  // map stays when it is turned off, so turning it on again finds it.
+  property int followThemeOverride: -1
+  readonly property bool configuredFollowTheme: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId) return entry.followTheme === true
+    }
+    return false
+  }
+  readonly property bool followTheme: followThemeOverride >= 0 ? followThemeOverride === 1 : configuredFollowTheme
+  // The entry may load after the theme name did; the check runs again then.
+  onConfiguredFollowThemeChanged: followThemeDesign()
+  property var themeDesignsOverride: null
+  readonly property var configuredThemeDesigns: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (!entry || String(entry.id || "") !== pluginId) continue
+      var map = entry.themeDesigns
+      return map && typeof map === "object" && !Array.isArray(map) ? map : {}
+    }
+    return {}
+  }
+  readonly property var themeDesigns: themeDesignsOverride ? themeDesignsOverride : configuredThemeDesigns
+
+  // themeDesigns with the current theme set to `id`; also the new override.
+  function rememberThemeDesign(id) {
+    var map = Util.cloneJson(themeDesigns) || {}
+    if (bootCurrentTheme.length > 0) map[bootCurrentTheme] = String(id)
+    themeDesignsOverride = map
+    return map
+  }
+
+  function setFollowTheme(value) {
+    var on = value === true || value === "true" || value === 1 || value === "1" || value === "on"
+    var off = value === false || value === "false" || value === 0 || value === "0" || value === "off"
+    if (!on && !off) return false
+
+    followThemeOverride = on ? 1 : 0
+    // Turning it on starts from the design that is up, so the current theme
+    // has one straight away.
+    var map = on ? rememberThemeDesign(designId) : themeDesigns
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (on) current.followTheme = true
+      else delete current.followTheme
+      if (Object.keys(map).length > 0) current.themeDesigns = map
+      writeEntry(current)
+    }
+    logEvent("follow-theme=" + (on ? "on" : "off"))
+    return true
+  }
+
+  // On a theme change, and once at startup for a theme switched while the
+  // shell was off: the design remembered for the theme that is now active.
+  function followThemeDesign() {
+    if (!followTheme || rotateDesigns !== "off" || bootCurrentTheme.length === 0) return
+    var want = themeDesigns[bootCurrentTheme]
+    if (!want || String(want) === designId || !Designs.byId(String(want))) return
+    logEvent("theme-design " + bootCurrentTheme + " -> " + want)
+    setDesign(String(want))
+  }
+
+  // A line for whoever finds the computer, drawn by DesignBase in the bottom
+  // left corner of every design. Saved on the plugin entry as `ownerMessage`;
+  // empty, the default, draws nothing. Whitespace is collapsed and the
+  // length capped so a corner note stays one.
+  property var ownerMessageOverride: null
+  readonly property string configuredOwnerMessage: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && entry.ownerMessage !== undefined) return String(entry.ownerMessage)
+    }
+    return ""
+  }
+  readonly property string ownerMessage: ownerMessageOverride !== null ? ownerMessageOverride : configuredOwnerMessage
+  readonly property int ownerMessageMaxLength: 120
+
+  function setOwnerMessage(value) {
+    var text = String(value === undefined || value === null ? "" : value).replace(/\s+/g, " ").trim()
+    if (text.length > ownerMessageMaxLength) return false
+    ownerMessageOverride = text
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (text.length > 0) current.ownerMessage = text
+      else delete current.ownerMessage
+      writeEntry(current)
+    }
+    logEvent("owner-message=" + (text.length > 0 ? "set" : "cleared"))
+    return true
+  }
+
+  // The favorites can take turns: the next one each time the screen locks,
+  // or a new one each day. Saved on the plugin entry as `rotateDesigns` (lock
+  // or day; absent is off) and, for the daily turn, `rotatedOn`, the day it
+  // last turned. Fewer than two favorites leaves nothing to rotate. While it
+  // is on the rotation has the design, so the theme does not
+  // (followThemeDesign).
+  readonly property var rotateDesignsOptions: ["off", "lock", "day"]
+  property string rotateDesignsOverride: ""
+  readonly property string configuredRotateDesigns: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && (entry.rotateDesigns === "lock" || entry.rotateDesigns === "day"))
+        return entry.rotateDesigns
+    }
+    return "off"
+  }
+  readonly property string rotateDesigns: rotateDesignsOverride.length > 0 ? rotateDesignsOverride : configuredRotateDesigns
+  property string rotatedOnOverride: ""
+  readonly property string configuredRotatedOn: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && entry.rotatedOn) return String(entry.rotatedOn)
+    }
+    return ""
+  }
+  readonly property string rotatedOn: rotatedOnOverride.length > 0 ? rotatedOnOverride : configuredRotatedOn
+
+  function setRotateDesigns(value) {
+    var v = String(value || "")
+    if (rotateDesignsOptions.indexOf(v) === -1) return false
+    rotateDesignsOverride = v
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (v === "off") {
+        delete current.rotateDesigns
+        delete current.rotatedOn
+      } else {
+        current.rotateDesigns = v
+      }
+      writeEntry(current)
+    }
+    logEvent("rotate-designs=" + v)
+    return true
+  }
+
+  function localDay() {
+    var d = new Date()
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2)
+  }
+
+  // As the screen locks: the next favorite, when it is time for one. A
+  // current design that is not a favorite hands over to the first.
+  function rotateDesign() {
+    if (rotateDesigns === "off") return
+    var pool = favorites.filter(function(id) { return !!Designs.byId(id) })
+    if (pool.length < 2) return
+    var day = localDay()
+    if (rotateDesigns === "day" && rotatedOn === day) return
+    var next = pool[(pool.indexOf(designId) + 1) % pool.length]
+    if (rotateDesigns === "day") rotatedOnOverride = day
+    logEvent("rotate-design " + designId + " -> " + next)
+    setDesign(next, rotateDesigns === "day" ? day : "turn")
+  }
+
   function setPowerActions(value) {
     var on = value === true || value === "true" || value === 1 || value === "1" || value === "on"
     var off = value === false || value === "false" || value === 0 || value === "0" || value === "off"
@@ -2454,25 +2624,38 @@ echo "$out"
     }
   }
 
+  // The Omarchy theme that is on: the boot screen resyncs its palette to it,
+  // and the design follows it when asked to (followThemeDesign).
   FileView {
     path: root.stateHome + "/omarchy/current/theme.name"
     watchChanges: true
     printErrors: false
-    onLoaded: { root.bootCurrentTheme = String(text()).trim(); root.maybeResyncBoot() }
+    onLoaded: { root.bootCurrentTheme = String(text()).trim(); root.maybeResyncBoot(); root.followThemeDesign() }
     onLoadFailed: root.bootCurrentTheme = ""
     onFileChanged: reload()
   }
 
-  function setDesign(id) {
+  // `how` says what kind of pick this is. Nothing: a pick, filed under the
+  // theme that is on while the design follows the theme. "all": a pick for
+  // every theme, which forgets the per-theme picks so this design shows
+  // whatever theme comes up. "turn", or a day: a rotation turn (rotateDesign),
+  // which is not a pick, so the theme does not remember it; the day is saved.
+  function setDesign(id, how) {
     var d = Designs.byId(String(id || ""))
     if (!d) return false
     designOverride = d.id
+    var everywhere = how === "all"
+    var map = followTheme && !how ? rememberThemeDesign(d.id) : null
+    if (everywhere) themeDesignsOverride = {}
     if (shell && typeof shell.updateEntryInline === "function") {
       var current = pluginEntry()
       current.design = d.id
+      if (map) current.themeDesigns = map
+      if (everywhere) delete current.themeDesigns
+      if (how && how !== "turn" && !everywhere) current.rotatedOn = how
       writeEntry(current)
     }
-    logEvent("design=" + d.id)
+    logEvent("design=" + d.id + (everywhere ? " all-themes" : ""))
     if (bootSetting === "follow") applyBoot(false)
     return true
   }
@@ -2846,6 +3029,7 @@ echo "$out"
       return false
     }
 
+    rotateDesign()
     cancelUnlockAnimation()
     resetAuthenticationState()
     inputBlocked = false
@@ -3387,6 +3571,7 @@ echo "$out"
           keyboardLayoutCount: root.keyboardLayoutCount
           batteryLow: root.batteryLow
           batteryPercent: root.batteryPercent
+          ownerMessage: root.ownerMessage
           onLayoutSwitchRequested: root.switchKeyboardLayout()
           capsLock: root.capsLock
           onCapsProbeRequested: root.probeCapsLock()
@@ -3488,6 +3673,7 @@ echo "$out"
         showAuthIcons: root.showAuthIcons
         batteryLow: root.batteryLow
         batteryPercent: root.batteryPercent
+        ownerMessage: root.ownerMessage
         // Hold the clip's last frame in the preview instead of snapping back
         // to the start; Esc (hidePreview) resets it.
         onUnlockFinished: {}
@@ -4181,6 +4367,11 @@ echo "$out"
       readonly property int defaultWakeGrace: root.defaultWakeGrace
       readonly property bool powerActions: root.powerActions
       readonly property bool mediaControls: root.mediaControls
+      readonly property bool followTheme: root.followTheme
+      readonly property var themeDesigns: root.themeDesigns
+      readonly property string rotateDesigns: root.rotateDesigns
+      readonly property string ownerMessage: root.ownerMessage
+      readonly property int ownerMessageMaxLength: root.ownerMessageMaxLength
       readonly property bool awayReport: root.awayReport
       readonly property string openAs: root.openAs
       readonly property bool barIconShown: root.barIconShown
@@ -4245,7 +4436,7 @@ echo "$out"
       signal exploreViewRequested(string view)
       signal bootDesignLoaded(string name, string content)
 
-      function setDesign(id) { return root.setDesign(id) }
+      function setDesign(id, how) { return root.setDesign(id, how) }
       function customizeDesign(id) { return root.customizeDesign(id) }
       function createDesignerDesign(content) { return root.createDesignerDesign(content) }
       function deleteDesign(id) { return root.deleteDesign(id) }
@@ -4279,6 +4470,9 @@ echo "$out"
       function setFaceStart(value) { return root.setFaceStart(value) }
       function setPowerActions(value) { return root.setPowerActions(value) }
       function setMediaControls(value) { return root.setMediaControls(value) }
+      function setFollowTheme(value) { return root.setFollowTheme(value) }
+      function setRotateDesigns(value) { return root.setRotateDesigns(value) }
+      function setOwnerMessage(value) { return root.setOwnerMessage(value) }
       function setAwayReport(value) { return root.setAwayReport(value) }
       function setOpenAs(value) { return root.setOpenAs(value) }
       function setBarIcon(value) { return root.setBarIcon(value) }
@@ -4526,6 +4720,11 @@ echo "$out"
       return root.setDesign(id) ? "ok" : "unknown-design"
     }
 
+    // The same, for every theme at once: the per-theme picks are forgotten.
+    function setDesignForAll(id: string): string {
+      return root.setDesign(id, "all") ? "ok" : "unknown-design"
+    }
+
     function setKeepDisplayOn(value: string): string {
       return root.setKeepDisplayOn(value) ? "ok" : "invalid-value"
     }
@@ -4548,6 +4747,33 @@ echo "$out"
 
     function setMediaControls(value: string): string {
       return root.setMediaControls(value) ? "ok" : "invalid-value"
+    }
+
+    function followTheme(): string {
+      return root.followTheme ? "on" : "off"
+    }
+
+    // on or off: remember a design per Omarchy theme and switch with the theme.
+    function setFollowTheme(value: string): string {
+      return root.setFollowTheme(value) ? "ok" : "invalid-value"
+    }
+
+    function rotateDesigns(): string {
+      return root.rotateDesigns
+    }
+
+    // off, lock or day: the favorites take turns on each lock, or daily.
+    function setRotateDesigns(value: string): string {
+      return root.setRotateDesigns(value) ? "ok" : "invalid-value"
+    }
+
+    function ownerMessage(): string {
+      return root.ownerMessage
+    }
+
+    // A line in the bottom left corner of every design; empty clears it.
+    function setOwnerMessage(value: string): string {
+      return root.setOwnerMessage(value) ? "ok" : "too-long"
     }
 
     function awayReport(): string {
@@ -4579,6 +4805,8 @@ echo "$out"
 
     function setBarIcon(value: string): string {
       return root.setBarIcon(value) ? "ok" : "invalid-value"
+    }
+
     function lockOnKeyRemoval(): string {
       return root.lockOnKeyRemoval ? "on" : "off"
     }

@@ -57,6 +57,9 @@ Item {
   // top right corner is the base's, so every design has it.
   property bool batteryLow: false
   property int batteryPercent: -1
+  // A line for whoever finds the computer, set in Settings. The base draws
+  // it bottom left, so every design has it; empty draws nothing.
+  property string ownerMessage: ""
 
   // Sleep, restart and shut down, off unless the owner turned them on. Every
   // design gets them from here, in the corner, and each asks a second time
@@ -73,6 +76,10 @@ Item {
   property bool mediaControls: false
   property bool showMediaStrip: true
   property bool mediaStripAtBottom: false
+  // The corners of the base's own chrome: the media strip and the owner
+  // message. Squarish by default; a design with pills (Island) rounds it, a
+  // designer layout sets it from its Corners slider.
+  property int chromeRadius: 6
   readonly property alias lockMedia: lockMediaSource
   LiveMedia { id: lockMediaSource }
   // "previous", "toggle" or "next". A click on a blanked screen only wakes it.
@@ -276,7 +283,7 @@ Item {
     y: base.mediaStripAtBottom ? parent.height - height - 64 : 24
     width: mediaRow.implicitWidth + 20
     height: 40
-    radius: 20
+    radius: Math.min(20, base.chromeRadius)
     color: withAlpha(Color.background, 0.72)
     border.width: 1
     border.color: withAlpha(Color.lock.text, 0.12)
@@ -288,7 +295,7 @@ Item {
       property bool available: true
       width: 30
       height: 30
-      radius: 15
+      radius: Math.min(15, base.chromeRadius)
       anchors.verticalCenter: parent ? parent.verticalCenter : undefined
       opacity: available ? 1 : 0.35
       color: base.withAlpha(Color.lock.text, mediaArea.containsMouse && available ? 0.18 : 0.08)
@@ -393,6 +400,35 @@ Item {
         font.pixelSize: 13
         anchors.verticalCenter: parent.verticalCenter
       }
+    }
+  }
+
+  Rectangle {
+    id: ownerNote
+    z: 900
+    visible: base.ownerMessage.length > 0 && !base.snapshotMode
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    anchors.leftMargin: 28
+    anchors.bottomMargin: 24
+    width: Math.min(ownerText.implicitWidth + 24, Math.round(parent.width * 0.5))
+    height: ownerText.height + 16
+    radius: Math.min(15, base.chromeRadius)
+    color: withAlpha(Color.background, 0.72)
+    border.width: 1
+    border.color: withAlpha(Color.lock.text, 0.25)
+
+    Text {
+      id: ownerText
+      anchors.centerIn: parent
+      width: parent.width - 24
+      text: base.ownerMessage
+      textFormat: Text.PlainText
+      wrapMode: Text.Wrap
+      horizontalAlignment: Text.AlignHCenter
+      color: Color.lock.text
+      font.family: Style.font.family
+      font.pixelSize: 13
     }
   }
 

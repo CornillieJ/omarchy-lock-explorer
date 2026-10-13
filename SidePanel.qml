@@ -547,7 +547,8 @@ BorderSurface {
             width: parent.width
             elide: Text.ElideRight
             text: row.active ? "󰄬 " + side.explorer.tr("Active")
-                  : (row.selected ? side.explorer.tr("Use") + "  ⏎" : (row.modelData.description || ""))
+                  : (row.selected ? side.explorer.tr("Use") + "  ⏎" + (side.explorer.followTheme ? "   ·   " + side.explorer.tr("All themes") + "  ⇧⏎" : "")
+                                  : (row.modelData.description || ""))
             textFormat: Text.PlainText
             color: row.active ? side.explorer.accent : side.explorer.muted
             font.family: side.explorer.fontFamily

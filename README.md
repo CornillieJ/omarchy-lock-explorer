@@ -199,6 +199,7 @@ omarchy-shell lock setBarIcon on         # the lock in the bar, or off
 omarchy-shell lock designs
 omarchy-shell lock design
 omarchy-shell lock setDesign zen
+omarchy-shell lock setDesignForAll zen        # for every theme, forgetting the per-theme picks
 omarchy-shell lock previewDesign split   # you can type in the preview
 omarchy-shell lock previewFail           # show the failure state in the preview
 omarchy-shell lock hidePreview
@@ -219,6 +220,12 @@ omarchy-shell lock menuEntry
 omarchy-shell lock setMenuEntry on     # launcher + Omarchy menu entries, or off
 omarchy-shell lock boot
 omarchy-shell lock setBoot follow            # stock, follow, or a design id with a twin
+omarchy-shell lock followTheme
+omarchy-shell lock setFollowTheme on         # remember a design per theme and switch with it
+omarchy-shell lock rotateDesigns
+omarchy-shell lock setRotateDesigns lock     # off, lock or day: the favorites take turns
+omarchy-shell lock ownerMessage
+omarchy-shell lock setOwnerMessage "If found, call +45 ..."   # empty clears it
 ```
 
 With more than one monitor you can pick which one shows the sign-in with `setInputMonitor`.
@@ -267,6 +274,34 @@ their text stays readable, and one value for all of them would undo that. Design
 solid color or their own art (Aurora, Neon, the ttfx designs and so on) are not affected. By hand:
 `omarchy-shell lock setWallpaperBlur sharp` and `setWallpaperDim darker`, `design` for either to
 go back. They are saved on the plugin entry as `wallpaperBlur` and `wallpaperDim`.
+
+### Design follows the theme
+
+**Design follows the theme** in Settings ties the lock screen to your Omarchy theme. While it is
+on, picking a design (Enter, or Use) remembers it for the theme that is active, and switching theme
+(`omarchy-theme-set` or the Omarchy menu) brings that theme's design back; a theme nothing has been
+picked under keeps whatever is up. Shift+Enter, or the All themes button on the card, picks a design
+for every theme at once and forgets the per-theme picks (`omarchy-shell lock setDesignForAll <id>`). Off by default: the same design shows whichever theme is active. By hand:
+`omarchy-shell lock setFollowTheme on` (`followTheme` to ask). Saved on the plugin entry as `followTheme`
+and `themeDesigns`, a map from theme name to design id, which stays when the setting is turned off
+so turning it on again finds it.
+
+### Rotate designs
+
+**Rotate designs** in Settings lets the favorites take turns: Each lock switches to the next
+favorite every time the screen locks, Each day switches once a day, on the first lock of the day.
+Star designs with `F` in the explorer to make them favorites; fewer than two leaves nothing to
+rotate. While the rotation is on it has the design, so Design follows the theme stands back. By
+hand: `omarchy-shell lock setRotateDesigns lock` (`day`, or `off`). Saved on the plugin entry as
+`rotateDesigns` and, for the daily turn, `rotatedOn`.
+
+### Owner message
+
+**Owner message** in Settings puts a line in the bottom left corner of every design, for whoever
+finds the computer: who to call, or where to bring it. Type it in the box and press Enter; empty it
+to show nothing. Up to 120 characters, shown as plain text. By hand:
+`omarchy-shell lock setOwnerMessage "If found, call +45 ..."`. Saved on the plugin entry as
+`ownerMessage`.
 
 ### Language
 

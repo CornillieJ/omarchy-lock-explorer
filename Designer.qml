@@ -42,6 +42,7 @@ Item {
   // announcement, the canvas is bound to its properties.
   property var nodes: []
   property string docName: D.DEFAULT_NAME
+  property int docCorners: D.DEFAULT_CORNERS
   property var selection: []
   property bool dirty: false
   property bool confirmDiscard: false
@@ -89,7 +90,7 @@ Item {
     })
   }
 
-  function currentDoc() { return D.docOf(designer.nodes, designer.docName) }
+  function currentDoc() { return D.docOf(designer.nodes, designer.docName, designer.docCorners) }
 
   function newNodeId() { return D.nextIdFrom(D.idsOf(designer.nodes)) }
 
@@ -145,6 +146,7 @@ Item {
     var made = []
     for (var i = 0; i < plain.nodes.length; i++) made.push(makeNode(plain.nodes[i]))
     designer.docName = plain.name
+    designer.docCorners = D.clampCorners(plain.corners)
     designer.nodes = made
     designer.selection = []
     // Only once the canvas has let go of them.
@@ -1157,6 +1159,7 @@ Item {
         editing: true
         selection: designer.selection
         viewScale: designer.canvasScale
+        chromeRadius: designer.docCorners
         backgroundPath: designer.service ? designer.service.backgroundPath : ""
         backgroundVersion: designer.service ? designer.service.backgroundVersion : 0
         avatarPath: designer.service ? designer.service.avatarPath : ""
@@ -1250,6 +1253,27 @@ Item {
           onEdited: function(next) {
             designer.pushUndo("name")
             designer.docName = String(next)
+            designer.touch()
+          }
+          onEscaped: designer.focusCanvas()
+        }
+
+        // The base's own chrome (media strip, owner message) follows the
+        // design: square for a sharp layout, a pill for a round one.
+        DesignerField {
+          language: designer.language
+          width: parent.width
+          label: designer.tr("CORNERS")
+          type: "number"
+          minimum: 0
+          maximum: 24
+          step: 1
+          value: designer.docCorners
+          foreground: designer.foreground
+          accent: designer.accent
+          onEdited: function(next) {
+            designer.pushUndo("corners")
+            designer.docCorners = D.clampCorners(next)
             designer.touch()
           }
           onEscaped: designer.focusCanvas()
