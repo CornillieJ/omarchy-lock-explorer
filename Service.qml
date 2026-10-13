@@ -36,14 +36,14 @@ Item {
   readonly property string designId: designOverride.length > 0 ? designOverride : configuredDesignId
   readonly property bool designHasClip: {
     var r = designsRevision
-    var d = Designs.byId(designId)
+    var d = Designs.byId(designId, userDesigns)
     return !!(d && d.clip)
   }
   // The video file behind the current clip design; user ClipDesigns get their
   // clipFile filled in by the lock-designs scan.
   readonly property string designClipPath: {
     var r = designsRevision
-    var d = Designs.byId(designId)
+    var d = Designs.byId(designId, userDesigns)
     if (!d || !d.clip || !d.clipFile) return ""
     return home + "/.config/omarchy/lock-videos/" + d.clipFile
   }
@@ -541,7 +541,7 @@ Item {
 
   function setFavorite(id, on) {
     var key = String(id || "")
-    if (key.length === 0 || !Designs.byId(key)) return false
+    if (key.length === 0 || !Designs.byId(key, root.userDesigns)) return false
     var next = favorites.filter(function(f) { return f !== key })
     if (on) next.push(key)
     favoritesOverride = next
@@ -1054,7 +1054,7 @@ Item {
   function followThemeDesign() {
     if (!followTheme || rotateDesigns !== "off" || bootCurrentTheme.length === 0) return
     var want = themeDesigns[bootCurrentTheme]
-    if (!want || String(want) === designId || !Designs.byId(String(want))) return
+    if (!want || String(want) === designId || !Designs.byId(String(want), root.userDesigns)) return
     logEvent("theme-design " + bootCurrentTheme + " -> " + want)
     setDesign(String(want))
   }
@@ -1148,7 +1148,7 @@ Item {
   // current design that is not a favorite hands over to the first.
   function rotateDesign() {
     if (rotateDesigns === "off") return
-    var pool = favorites.filter(function(id) { return !!Designs.byId(id) })
+    var pool = favorites.filter(function(id) { return !!Designs.byId(id, root.userDesigns) })
     if (pool.length < 2) return
     var day = localDay()
     if (rotateDesigns === "day" && rotatedOn === day) return
@@ -1256,6 +1256,9 @@ Item {
 
   readonly property string userDesignsDir: home + "/.config/omarchy/lock-designs"
   property int designsRevision: 0
+  // Designs found in userDesignsDir, see Designs.fromUserFile. Every reader
+  // gets this list passed in rather than reading Designs.js module state.
+  property var userDesigns: []
 
   function rescanUserDesigns() {
     if (!userDesignsProc.running) userDesignsProc.running = true
@@ -1482,7 +1485,7 @@ Item {
   function customizeDesign(id) {
     var d = String(id || "") === "new"
       ? { id: "new", file: "MyDesign.qml", name: "new", template: true }
-      : Designs.byId(String(id || ""))
+      : Designs.byId(String(id || ""), root.userDesigns)
     if (!d) return false
     if (d.path) { designCustomized(d.id, decodeURIComponent(d.path.replace(/^file:\/\//, ""))); return true }
     var source = d.template ? pluginDir + "/extras/lock-designs/" + d.file : pluginDir + "/designs/" + d.file
@@ -1520,7 +1523,7 @@ echo "$target"
         var target = String(customizeOut.text || "").trim()
         if (target.length === 0) return
         var d = Designs.fromUserFile(target)
-        Designs.setUser(Designs.USER.concat([d]))
+        root.userDesigns = root.userDesigns.concat([d])
         root.designsRevision += 1
         root.designCustomized(d.id, target)
         root.rescanUserDesigns()
@@ -1566,7 +1569,7 @@ echo "$target"
         if (target.length === 0) return
         var d = Designs.fromUserFile(target)
         d.designer = true
-        Designs.setUser(Designs.USER.concat([d]))
+        root.userDesigns = root.userDesigns.concat([d])
         root.designsRevision += 1
         root.designerDesignCreated(d.id, target)
         root.rescanUserDesigns()
@@ -1918,7 +1921,7 @@ printf "%s\\t%s\\n" "$target" "$base"
         d.anim = true
         d.clip = true
         if (parts.length > 1 && parts[1].trim().length > 0) d.clipFile = parts[1].trim()
-        Designs.setUser(Designs.USER.concat([d]))
+        root.userDesigns = root.userDesigns.concat([d])
         root.designsRevision += 1
         root.rescanUserDesigns()
         root.clipDesignAdded(d.id)
@@ -1931,7 +1934,7 @@ printf "%s\\t%s\\n" "$target" "$base"
   // video goes with it, unless the boot screen, the Motion video or the unlock
   // clip still point at it, or another design names it.
   function deleteDesign(id) {
-    var d = Designs.byId(String(id || ""))
+    var d = Designs.byId(String(id || ""), root.userDesigns)
     if (!d || !d.path) return false
     var file = decodeURIComponent(String(d.path).replace(/^file:\/\//, ""))
     if (file.indexOf(userDesignsDir + "/") !== 0) return false
@@ -2134,7 +2137,7 @@ echo "$out"
     var value = bootOverride.length > 0 ? bootOverride : configuredBoot
     if (value === "follow" || value === "stock" || value === "theme" || value === "rotate") return value
     if (value.indexOf("snapshot:") === 0 || value.indexOf("video:") === 0 || value.indexOf("custom:") === 0) return value
-    var d = Designs.byId(value)
+    var d = Designs.byId(value, root.userDesigns)
     return d && d.boot === true ? value : "stock"
   }
   property bool bootApplying: false
@@ -2147,7 +2150,7 @@ echo "$out"
     if (bootSetting === "rotate") return ""
     if (bootSetting.indexOf("snapshot:") === 0) return bootSetting
     if (bootSetting === "follow") {
-      var d = Designs.byId(designId)
+      var d = Designs.byId(designId, root.userDesigns)
       return d && d.boot === true ? d.id : ""
     }
     return bootSetting
@@ -2156,7 +2159,7 @@ echo "$out"
   function setBoot(value) {
     var v = String(value || "").trim().toLowerCase()
     if (v !== "follow" && v !== "stock" && v !== "theme" && v !== "rotate" && v.indexOf("video:") !== 0 && v.indexOf("custom:") !== 0 && v.indexOf("snapshot:") !== 0) {
-      var d = Designs.byId(v)
+      var d = Designs.byId(v, root.userDesigns)
       if (!d || d.boot !== true) return false
     }
     if (bootApplying) return false
@@ -2392,7 +2395,7 @@ echo "$out"
     logEvent("boot-clip=" + v)
     var appliedIsClip = bootApplied.indexOf("video:") === 0
     if (!appliedIsClip) {
-      var d = Designs.byId(bootApplied)
+      var d = Designs.byId(bootApplied, root.userDesigns)
       appliedIsClip = !!(d && d.bootKind === "clip")
     }
     if (appliedIsClip) applyBoot(true, bootApplied)
@@ -2642,7 +2645,7 @@ echo "$out"
   // whatever theme comes up. "turn", or a day: a rotation turn (rotateDesign),
   // which is not a pick, so the theme does not remember it; the day is saved.
   function setDesign(id, how) {
-    var d = Designs.byId(String(id || ""))
+    var d = Designs.byId(String(id || ""), root.userDesigns)
     if (!d) return false
     designOverride = d.id
     var everywhere = how === "all"
@@ -3580,6 +3583,7 @@ echo "$out"
           fadeIn: true
           designId: root.showsInput(lockSurface.screen) ? root.designId : "companion"
           revision: root.designsRevision
+          userDesigns: root.userDesigns
           backgroundPath: root.backgroundPath
           backgroundVersion: root.backgroundVersion
           avatarPath: root.avatarPath
@@ -3661,6 +3665,7 @@ echo "$out"
         anchors.fill: parent
         designId: root.previewDesignId.length > 0 ? root.previewDesignId : root.designId
         revision: root.designsRevision
+        userDesigns: root.userDesigns
         backgroundPath: root.backgroundPath
         backgroundVersion: root.backgroundVersion
         avatarPath: root.avatarPath
@@ -3971,9 +3976,10 @@ echo "$out"
           if (parts.length > 2 && parts[2].trim().length > 0) d.clipFile = parts[2].trim()
           return d
         })
-        var before = JSON.stringify(Designs.USER)
-        Designs.setUser(list)
-        if (JSON.stringify(list) !== before) root.designsRevision += 1
+        if (JSON.stringify(list) !== JSON.stringify(root.userDesigns)) {
+          root.userDesigns = list
+          root.designsRevision += 1
+        }
       }
     }
   }
@@ -4363,6 +4369,7 @@ echo "$out"
     QtObject {
       readonly property string designId: root.designId
       readonly property int designsRevision: root.designsRevision
+      readonly property var userDesigns: root.userDesigns
       readonly property string backgroundPath: root.backgroundPath
       readonly property int backgroundVersion: root.backgroundVersion
       readonly property string avatarPath: root.avatarPath
@@ -4729,7 +4736,7 @@ echo "$out"
     }
 
     function designs(): string {
-      return JSON.stringify(Designs.all().map(function(d) {
+      return JSON.stringify(Designs.all(root.userDesigns).map(function(d) {
         return { id: d.id, name: d.name, description: d.description, active: d.id === root.designId }
       }))
     }
@@ -4948,7 +4955,7 @@ echo "$out"
 
     function previewDesign(id: string): string {
       root.rescanUserDesigns()
-      if (!Designs.byId(String(id || ""))) return "unknown-design"
+      if (!Designs.byId(String(id || ""), root.userDesigns)) return "unknown-design"
       root.previewDesignId = String(id)
       root.previewUnlocking = false
       root.refreshBackground()
@@ -4984,7 +4991,7 @@ echo "$out"
 
     function previewUnlock(): string {
       if (!root.previewVisible) return "no-preview"
-      var pd = Designs.byId(root.previewDesignId.length > 0 ? root.previewDesignId : root.designId)
+      var pd = Designs.byId(root.previewDesignId.length > 0 ? root.previewDesignId : root.designId, root.userDesigns)
       if (pd && pd.clip) {
         root.previewClipPlaying = true
         return "ok"
@@ -5019,7 +5026,7 @@ echo "$out"
     }
 
     function editDesign(id: string): string {
-      var d = Designs.byId(String(id || ""))
+      var d = Designs.byId(String(id || ""), root.userDesigns)
       if (!d || !d.path) return "not-a-custom-design"
       Quickshell.execDetached(["omarchy-launch-editor", decodeURIComponent(d.path.replace(/^file:\/\//, ""))])
       return "ok"

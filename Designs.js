@@ -77,28 +77,26 @@ var DESIGNS = [
   { id: "meridian", file: "Meridian.qml", name: "Meridian", description: "One line down the middle, time left, day right, field across", tags: ["minimal"] },
 ]
 
-var USER = []
-
 // Not listed in the explorer, used for monitors without input.
 var HIDDEN = [
   { id: "companion", file: "Companion.qml", name: "Companion", description: "Clock only, for secondary monitors", tags: [] }
 ]
 
-// Designs found in ~/.config/omarchy/lock-designs, set by Service.qml.
-function setUser(list) { USER = list || [] }
-
-function all() { return DESIGNS.concat(USER) }
+// Designs found in ~/.config/omarchy/lock-designs live on Service.userDesigns
+// and are passed in. Module state here is not shared between importing files
+// once the shell's load patch rewrites them, so it must not hold that list.
+function all(user) { return DESIGNS.concat(user || []) }
 
 // Lockscreen designs split into two navs: static stylings vs animated ones.
 function isAnimated(d) { return !!(d && (d.anim === true || d.clip === true)) }
-function stylings() { return all().filter(function(d) { return !isAnimated(d) }) }
-function animations() { return all().filter(function(d) { return isAnimated(d) }) }
+function stylings(user) { return all(user).filter(function(d) { return !isAnimated(d) }) }
+function animations(user) { return all(user).filter(function(d) { return isAnimated(d) }) }
 
 function categories() { return CATEGORIES }
 
-function inCategory(category) {
-  if (!category || category === "all") return all()
-  return all().filter(function(d) { return (d.tags || []).indexOf(category) !== -1 })
+function inCategory(category, user) {
+  if (!category || category === "all") return all(user)
+  return all(user).filter(function(d) { return (d.tags || []).indexOf(category) !== -1 })
 }
 
 // Designs with a Plymouth twin in plymouth/<id>/, usable as the boot
@@ -107,20 +105,20 @@ function bootCapable() {
   return DESIGNS.filter(function(d) { return d.boot === true })
 }
 
-function byId(id) {
-  var list = all().concat(HIDDEN)
+function byId(id, user) {
+  var list = all(user).concat(HIDDEN)
   for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]
   return null
 }
 
-function indexOf(id) {
-  var list = all()
+function indexOf(id, user) {
+  var list = all(user)
   for (var i = 0; i < list.length; i++) if (list[i].id === id) return i
   return -1
 }
 
-function resolve(id) {
-  return byId(id) || byId(DEFAULT_ID) || DESIGNS[0]
+function resolve(id, user) {
+  return byId(id, user) || byId(DEFAULT_ID) || DESIGNS[0]
 }
 
 function fromUserFile(path) {
