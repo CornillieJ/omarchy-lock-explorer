@@ -49,7 +49,8 @@ BorderSurface {
   readonly property var tabs: [
     { id: "favorites", name: "Favorites" },
     { id: "styling", name: "Styling" },
-    { id: "animation", name: "Animation" }
+    { id: "animation", name: "Animation" },
+    { id: "seasonal", name: "Seasonal" }
   ]
   readonly property bool filtering: explorer.searchText.trim().length > 0
 

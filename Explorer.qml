@@ -325,7 +325,7 @@ Item {
     root.service.runDoctor()
   }
 
-  readonly property bool gridTab: mainTab === "styling" || mainTab === "animation" || mainTab === "favorites"
+  readonly property bool gridTab: mainTab === "styling" || mainTab === "animation" || mainTab === "seasonal" || mainTab === "favorites"
 
   readonly property var categories: Designs.categories()
 
@@ -371,6 +371,7 @@ Item {
     var words = searchText.trim().toLowerCase().split(/\s+/).filter(function(w) { return w.length > 0 })
     if (words.length > 0) return Designs.all(root.userDesigns).filter(function(d) { return root.matchesSearch(d, words) })
     if (mainTab === "animation") return Designs.animations(root.userDesigns)
+    if (mainTab === "seasonal") return Designs.seasonal(root.userDesigns)
     if (mainTab === "favorites") return favoriteDesigns()
     return Designs.stylings(root.userDesigns)
   }
@@ -1408,7 +1409,7 @@ Item {
         root.bootEditBusy = false
     }
     function onExploreTabRequested(tab) {
-      if (tab !== "styling" && tab !== "animation" && tab !== "favorites" && tab !== "boot" && tab !== "settings") return
+      if (tab !== "styling" && tab !== "animation" && tab !== "seasonal" && tab !== "favorites" && tab !== "boot" && tab !== "settings") return
       // summon() re-runs open() even when already open, and open() resets the
       // tab — stash the request so it survives either path.
       root.requestedTab = tab
@@ -1720,6 +1721,7 @@ Item {
                   + " · " + root.tr("Esc clears")
               if (root.mainTab === "favorites") return root.tr("%1 starred with F").arg(root.designs.length)
               if (root.mainTab === "animation") return root.tr("%1 animated lock screens").arg(Designs.animations(root.userDesigns).length)
+              if (root.mainTab === "seasonal") return root.tr("%1 seasonal lock screens").arg(Designs.seasonal(root.userDesigns).length) + " · " + root.tr("In their own colors")
               if (root.mainTab === "editor") return root.bootEditing.length > 0 ? root.tr("Editing %1").arg(root.bootEditing) : root.tr("Make a matching lock screen and boot screen")
               return (root.mainTab === "styling" ? root.tr("%1 lock screen stylings").arg(Designs.stylings(root.userDesigns).length) + " · " : "") + root.currentThemeName + " · " + root.tr("Follows your theme")
             }
@@ -3590,6 +3592,7 @@ Item {
             return [
               { id: "styling", name: "Styling", count: Designs.stylings(root.userDesigns).length },
               { id: "animation", name: "Animation", count: Designs.animations(root.userDesigns).length },
+              { id: "seasonal", name: "Seasonal", count: Designs.seasonal(root.userDesigns).length },
               { id: "favorites", name: "Favorites", count: root.favoriteDesigns().length },
               { id: "boot", name: "Boot screen", count: 0 },
               { id: "settings", name: "Settings", count: 0 }

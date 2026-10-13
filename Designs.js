@@ -12,6 +12,7 @@ var CATEGORIES = [
   { id: "fun", name: "Fun" },
   { id: "motion", name: "Motion" },
   { id: "reactive", name: "Reactive" },
+  { id: "seasonal", name: "Seasonal" },
   { id: "custom", name: "Custom" }
 ]
 
@@ -75,6 +76,10 @@ var DESIGNS = [
   { id: "ticket", file: "Ticket.qml", name: "Ticket", description: "A boarding pass: the time departs, the password is the gate", tags: ["cards", "fun"] },
   { id: "marquee", file: "Marquee.qml", name: "Marquee", description: "Digits bigger than the screen, cut off at the bottom edge", tags: ["type"] },
   { id: "meridian", file: "Meridian.qml", name: "Meridian", description: "One line down the middle, time left, day right, field across", tags: ["minimal"] },
+  { id: "blueprint", file: "Blueprint.qml", name: "Blueprint", description: "A drafting sheet: the time dimensioned, a title block, the sign-in as a detail", tags: ["type", "dark"] },
+  // Seasonal: their own palettes, listed under the Seasonal nav.
+  { id: "ghosts", file: "Ghosts.qml", name: "Ghosts", description: "Sheet ghosts drift over your wallpaper, eyes on the field, a BOO on a wrong password", tags: ["seasonal", "reactive"], anim: true },
+  { id: "cobweb", file: "Cobweb.qml", name: "Cobweb", description: "A dewy web in the corner and a spider that comes down as you type", tags: ["seasonal", "dark", "reactive"], anim: true },
 ]
 
 // Not listed in the explorer, used for monitors without input.
@@ -87,10 +92,14 @@ var HIDDEN = [
 // once the shell's load patch rewrites them, so it must not hold that list.
 function all(user) { return DESIGNS.concat(user || []) }
 
-// Lockscreen designs split into two navs: static stylings vs animated ones.
+// Lockscreen designs split into navs: static stylings, animated ones, and
+// seasonal ones of either kind, which get a nav of their own instead of
+// sitting among the rest.
 function isAnimated(d) { return !!(d && (d.anim === true || d.clip === true)) }
-function stylings(user) { return all(user).filter(function(d) { return !isAnimated(d) }) }
-function animations(user) { return all(user).filter(function(d) { return isAnimated(d) }) }
+function isSeasonal(d) { return !!(d && (d.tags || []).indexOf("seasonal") !== -1) }
+function stylings(user) { return all(user).filter(function(d) { return !isAnimated(d) && !isSeasonal(d) }) }
+function animations(user) { return all(user).filter(function(d) { return isAnimated(d) && !isSeasonal(d) }) }
+function seasonal(user) { return all(user).filter(function(d) { return isSeasonal(d) }) }
 
 function categories() { return CATEGORIES }
 
