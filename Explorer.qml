@@ -2321,7 +2321,7 @@ Item {
                     // Enter saves, Escape puts the saved line back. Typing breaks
                     // the binding to the saved line, so a change from elsewhere
                     // (the IPC) is copied in by hand.
-                    TextInput {
+                    TypedInput {
                       id: ownerInput
                       anchors.fill: parent
                       anchors.leftMargin: Style.space(10)

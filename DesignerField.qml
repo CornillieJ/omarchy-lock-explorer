@@ -523,7 +523,7 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
-        TextEdit {
+        TypedEdit {
           id: codeEdit
           width: Math.max(parent.width, contentWidth)
           text: String(field.value || "")
@@ -543,9 +543,6 @@ Item {
             if ((event.modifiers & Qt.ControlModifier)
                 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
               field.edited(codeEdit.text)
-              event.accepted = true
-            } else if (event.key === Qt.Key_Tab) {
-              codeEdit.insert(codeEdit.cursorPosition, "  ")
               event.accepted = true
             }
           }

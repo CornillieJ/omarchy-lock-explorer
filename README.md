@@ -735,4 +735,9 @@ and types through its own key handler. A writable `TextInput` subscribes to the 
 Qt up to 6.12.0 that makes the shell read the whole clipboard offer, unbounded and on its main
 thread, whenever any program changes the clipboard (QTBUG-149610); a read-only one does not. The
 cost is that the fields take no paste and no input-method composition: type into them, or compose
-elsewhere. Use `TypedInput` for any new field rather than `TextInput` or a Controls `TextField`.
+elsewhere. The two code editors, the design source editor and the designer's snippet box, are a
+`TypedEdit` (`designs/TypedEdit.qml`) for the same reason: an editable `TextEdit` reads the whole
+clipboard on Ctrl+V, Shift+Insert, a middle click or a drop. Paste a larger snippet by opening the
+file in your own editor (Ctrl+O in the source editor). Use `TypedInput` or `TypedEdit` for any new
+field rather than `TextInput`, `TextEdit` or a Controls `TextField`; `tests/editable-fields.test.cjs`
+fails on any editable text field.

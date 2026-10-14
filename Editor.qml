@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Commons as Commons
 import "ExplorerStrings.js" as UiText
+import "designs"
 
 // Code on the left, live preview on the right. Ctrl+S saves and reloads the
 // design everywhere (preview, thumbnails and the lock screen itself).
@@ -134,7 +135,7 @@ Item {
           else if (contentY + height <= r.y + r.height) contentY = r.y + r.height - height
         }
 
-        TextEdit {
+        TypedEdit {
           id: code
           readonly property real lineHeightValue: contentHeight > 0 && lineCount > 0 ? contentHeight / lineCount : font.pixelSize * 1.3
           width: Math.max(flick.width, contentWidth)
@@ -158,17 +159,6 @@ Item {
               editor.save(); event.accepted = true
             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_O) {
               editor.openExternalRequested(editor.path); event.accepted = true
-            } else if (event.key === Qt.Key_Tab) {
-              code.insert(code.cursorPosition, "  "); event.accepted = true
-            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-              // keep indentation of the current line
-              var pos = code.cursorPosition
-              var t = code.text
-              var start = t.lastIndexOf("\n", pos - 1) + 1
-              var indent = ""
-              for (var i = start; i < pos && (t.charAt(i) === " " || t.charAt(i) === "\t"); i++) indent += t.charAt(i)
-              code.insert(pos, "\n" + indent)
-              event.accepted = true
             }
           }
         }
