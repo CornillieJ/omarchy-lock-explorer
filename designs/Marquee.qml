@@ -33,6 +33,10 @@ DesignBase {
     font.pixelSize: Math.round(parent.height * 0.62)
     font.weight: Font.Black
     font.letterSpacing: -Math.round(parent.height * 0.02)
+    // At this size Qt renders the glyphs from a distance field, and its
+    // interpolated outline turns the curves (the 8, the colon, the bowls)
+    // into visible polygons. The native rasterizer keeps them smooth.
+    renderType: Text.NativeRendering
     layer.enabled: true
     layer.effect: MultiEffect { shadowEnabled: true; shadowColor: Qt.rgba(0, 0, 0, 0.6); shadowBlur: 1.0; shadowVerticalOffset: 6 }
   }
