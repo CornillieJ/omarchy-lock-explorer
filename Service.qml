@@ -1223,7 +1223,9 @@ Item {
   }
 
   function setKeepDisplayOn(on) {
-    var value = on === true || on === 1 || on === "true"
+    var value = on === true || on === "true" || on === 1 || on === "1" || on === "on"
+    var off = on === false || on === "false" || on === 0 || on === "0" || on === "off"
+    if (!value && !off) return false
     keepDisplayOnOverride = value ? 1 : 0
     if (shell && typeof shell.updateEntryInline === "function") {
       var current = pluginEntry()
