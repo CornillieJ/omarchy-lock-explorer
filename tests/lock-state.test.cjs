@@ -28,7 +28,7 @@ function locker() {
     clipUnlocking: false, unlockPlayback: false, unlocking: false, unlockAuthorized: false,
     pendingAwayReport: null, motionReduced: true, faceStart: 'wake',
     logEvent() {}, startFingerprint() {}, startFido2() {}, startFace() {},
-    resetAuthenticationState() {}, runWake() {},
+    resetAuthenticationState() {}, runWake() {}, askBootRotationHelperRemoval() {},
     Qt: { callLater(fn) { queued.push(fn); } },
   };
   c.root = c;

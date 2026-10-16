@@ -2548,8 +2548,13 @@ echo "$out"
   readonly property var bootRotation: bootRotationOverride !== null ? bootRotationOverride : configuredBootRotation
   // Earlier versions could install a root path unit that applied the next
   // theme without asking; a theme picks the plugin Plymouth loads as root,
-  // so that is no longer used, and removeBootRotationHelper() takes it out.
+  // so that is passwordless root for anything running as the account. An
+  // update cannot take root files away by itself, so the first start that
+  // finds one asks to remove it (one polkit prompt, explained in a
+  // notification first) -- never while the screen is locked, where the
+  // dialog cannot show, and again at every start until it is gone.
   property bool bootRotateHelperInstalled: false
+  property bool bootRotateRemovalAsked: false
   property string bootRotateNext: ""
 
   function toggleBootRotation(id) {
@@ -2598,6 +2603,16 @@ echo "$out"
     setBoot("rotate")
   }
 
+  function askBootRotationHelperRemoval() {
+    if (!bootRotateHelperInstalled || bootRotateRemovalAsked || locked || lockRequested) return
+    bootRotateRemovalAsked = true
+    logEvent("boot-rotate-helper-removal: asking")
+    Quickshell.execDetached(["notify-send", "-a", "Lock Screen Explorer", "Removing an old boot screen helper",
+      "An earlier version installed a background service that could change the boot screen as root without asking. "
+      + "Enter your password to remove it."])
+    removeBootRotationHelper()
+  }
+
   function removeBootRotationHelper() {
     if (bootRotateRemoveProc.running) return false
     bootRotateRemoveProc.command = ["pkexec", "bash", pluginDir + "/plymouth/rotate-setup.sh", "remove"]
@@ -2611,19 +2626,26 @@ echo "$out"
     stderr: StdioCollector { }
     onExited: function(exitCode) {
       root.logEvent(exitCode === 0 ? "boot-rotate-helper-removed" : "boot-rotate-helper-remove-failed=" + exitCode)
+      if (exitCode !== 0)
+        Quickshell.execDetached(["notify-send", "-a", "Lock Screen Explorer", "The old boot screen helper is still installed",
+          "It will be asked for again at the next start, or run: omarchy-shell lock removeBootRotationHelper"])
       bootRotateCheckProc.running = true
     }
   }
 
   Process {
     id: bootRotateCheckProc
-    command: ["bash", "-c", "[ -e /etc/systemd/system/omarchy-lock-explorer-boot.path ] && echo yes || echo no"]
+    // Any piece of it: the path unit, its service or the helper script.
+    command: ["bash", "-c", "for f in /etc/systemd/system/omarchy-lock-explorer-boot.path /etc/systemd/system/omarchy-lock-explorer-boot.service /usr/local/lib/omarchy-lock-explorer-rotate.sh; do [ -e \"$f\" ] && { echo yes; exit; }; done; echo no"]
     stdout: StdioCollector {
       id: bootRotateCheckOut
       waitForEnd: true
       onStreamFinished: {
         root.bootRotateHelperInstalled = String(bootRotateCheckOut.text || "").trim() === "yes"
-        if (root.bootRotateHelperInstalled) root.logEvent("boot-rotate-helper-present (omarchy-shell lock removeBootRotationHelper)")
+        if (root.bootRotateHelperInstalled) {
+          root.logEvent("boot-rotate-helper-present")
+          root.askBootRotationHelperRemoval()
+        }
       }
     }
   }
@@ -3204,6 +3226,8 @@ echo "$out"
     // all while motion is reduced.
     if (hadClip) commitClipWallpaper()
     else if (!motionReduced) playSting()
+    // Asked for while the screen was locked: now the dialog can show.
+    Qt.callLater(askBootRotationHelperRemoval)
   }
 
   function cancelUnlockAnimation() {
