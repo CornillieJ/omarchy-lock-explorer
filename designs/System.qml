@@ -95,11 +95,11 @@ DesignBase {
       spacing: 4
       Row {
         spacing: 8
-        Text { text: icon; color: Commons.Color.lock.borderActive; font.family: Style.font.family; font.pixelSize: Style.font.title }
-        Text { text: label.toUpperCase(); color: lock.withAlpha(Commons.Color.lock.text, 0.55); font.family: Style.font.family; font.pixelSize: Style.font.caption; font.letterSpacing: 2; anchors.verticalCenter: parent.verticalCenter }
+        Text { text: icon; textFormat: Text.PlainText; color: Commons.Color.lock.borderActive; font.family: Style.font.family; font.pixelSize: Style.font.title }
+        Text { text: label.toUpperCase(); textFormat: Text.PlainText; color: lock.withAlpha(Commons.Color.lock.text, 0.55); font.family: Style.font.family; font.pixelSize: Style.font.caption; font.letterSpacing: 2; anchors.verticalCenter: parent.verticalCenter }
       }
-      Text { text: value; color: Commons.Color.lock.text; font.family: Style.font.family; font.pixelSize: Style.font.displayLarge; font.weight: Font.DemiBold }
-      Text { text: sub; color: lock.withAlpha(Commons.Color.lock.text, 0.55); font.family: Style.font.family; font.pixelSize: Style.font.caption; visible: sub.length > 0 }
+      Text { text: value; textFormat: Text.PlainText; color: Commons.Color.lock.text; font.family: Style.font.family; font.pixelSize: Style.font.displayLarge; font.weight: Font.DemiBold }
+      Text { text: sub; textFormat: Text.PlainText; color: lock.withAlpha(Commons.Color.lock.text, 0.55); font.family: Style.font.family; font.pixelSize: Style.font.caption; visible: sub.length > 0 }
     }
     Rectangle {
       visible: fill >= 0
@@ -133,6 +133,7 @@ DesignBase {
       Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: lock.date("dddd, d MMMM") + "  ·  " + lock.userName + "@" + lock.hostName
+        textFormat: Text.PlainText
         color: lock.withAlpha(Commons.Color.lock.text, 0.7)
         font.family: Style.font.family
         font.pixelSize: Style.font.subtitle

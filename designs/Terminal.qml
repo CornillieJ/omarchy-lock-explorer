@@ -50,11 +50,13 @@ DesignBase {
 
     Text {
       text: "Omarchy Linux (" + lock.hostName + ") (tty1)"
+      textFormat: Text.PlainText
       color: lock.fg; font.family: Style.font.family; font.pixelSize: lock.fontSize
     }
     Text { text: " "; font.pixelSize: lock.fontSize }
     Text {
       text: lock.hostName + " login: " + lock.userName
+      textFormat: Text.PlainText
       color: lock.fg; font.family: Style.font.family; font.pixelSize: lock.fontSize
     }
 

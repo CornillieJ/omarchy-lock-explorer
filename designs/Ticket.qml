@@ -22,6 +22,7 @@ DesignBase {
   component Label: Text {
     property string caption: ""
     text: caption.toUpperCase()
+    textFormat: Text.PlainText
     color: lock.withAlpha(Commons.Color.lock.text, 0.5)
     font.family: Style.font.family
     font.pixelSize: Style.font.caption

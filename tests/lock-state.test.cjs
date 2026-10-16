@@ -25,7 +25,7 @@ function locker() {
     sessionLock: { locked: false, secure: false },
     unlockTimer: { stop() {} }, clipFailsafe: { stop() {} },
     sessionLockStabilizeTimer: { stop() {} }, pendingSessionLockTimer: { stop() {} },
-    clipUnlocking: false, unlockPlayback: false, unlocking: false,
+    clipUnlocking: false, unlockPlayback: false, unlocking: false, unlockAuthorized: false,
     pendingAwayReport: null, motionReduced: true, faceStart: 'wake',
     logEvent() {}, startFingerprint() {}, startFido2() {}, startFace() {},
     resetAuthenticationState() {}, runWake() {},
@@ -72,8 +72,9 @@ function acquire(c) {
 test('release clears both cached bindings without a native locked notification', () => {
   const c = locker();
   acquire(c);
-  // finishUnlock clears the request before releasing the native lock.
+  // finishUnlock clears the request and authorizes the release.
   c.lockRequested = false;
+  c.unlockAuthorized = true;
   assert.equal(c.locked, true);
   c.sessionLock.secure = false;
   c.releaseLock();
@@ -101,10 +102,31 @@ test('repeated lock and unlock cycles leave the next lock available', () => {
   for (let i = 0; i < 3; i++) {
     acquire(c);
     c.lockRequested = false;
+    c.unlockAuthorized = true;
     assert.equal(c.locked, true);
     c.sessionLock.secure = false;
     c.releaseLock();
     assert.equal(c.locked, false);
     assert.equal(c.holdsLock, false);
   }
+});
+
+test('a release nobody authenticated for leaves the session locked', () => {
+  const c = locker();
+  acquire(c);
+  // What a design emitting unlockFinished() on its own amounts to.
+  c.releaseLock();
+  assert.equal(c.sessionLock.locked, true);
+  assert.equal(c.locked, true);
+  // And a release that was authorized is spent once used.
+  c.lockRequested = false;
+  c.unlockAuthorized = true;
+  c.releaseLock();
+  assert.equal(c.sessionLock.locked, false);
+  assert.equal(c.unlockAuthorized, false);
+});
+
+test('the lock surface takes unlockFinished from a design only during a clip unlock', () => {
+  assert.match(source, /onUnlockFinished: if \(root\.clipUnlocking\) root\.releaseLock\(\)/);
+  assert.match(bodyAfter('function finishUnlock('), /unlockAuthorized = true/);
 });

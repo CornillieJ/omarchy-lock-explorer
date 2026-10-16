@@ -137,6 +137,7 @@ DesignBase {
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
       text: lock.greeting() + ", " + lock.displayName
+      textFormat: Text.PlainText
       color: lock.withAlpha(Commons.Color.lock.text, 0.7)
       font.family: Style.font.family
       font.pixelSize: Style.font.title

@@ -90,6 +90,7 @@ DesignBase {
         }
         Text {
           text: lock.displayName
+          textFormat: Text.PlainText
           color: Commons.Color.lock.text
           font.family: Style.font.family
           font.pixelSize: Style.font.displayLarge
@@ -125,6 +126,7 @@ DesignBase {
       anchors.margins: lock.margin
       opacity: lock.snapshotMode ? 0 : 1
       text: "󰌾  " + lock.hostName
+      textFormat: Text.PlainText
       color: lock.withAlpha(Commons.Color.lock.text, 0.45)
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall

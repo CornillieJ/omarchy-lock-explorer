@@ -52,9 +52,9 @@ DesignBase {
   // bounds the wait, this bounds the memory.
   readonly property int responseCap: 262144
 
-  FileView {
+  CappedFile {
     path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
-    printErrors: false
+    maxBytes: 65536
     onLoaded: {
       try {
         var d = JSON.parse(text())

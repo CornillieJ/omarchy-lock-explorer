@@ -736,8 +736,17 @@ Item {
 
   function snapshotAndApply(id, persist) {
     if (root.bootApplying) return
+    // The id names the snapshot files and comes back from the saved boot
+    // setting: a plain design id only.
+    var sid = String(id || "")
+    if (!/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,63}$/.test(sid) || sid.indexOf("..") !== -1) return
+    if (!root.service) return
     root.snapshotBusy = true
-    snapshotHost.designId = id
+    snapshotHost.designId = sid
+    snapshotMkdirProc.command = ["bash", "-c",
+      'source "$1" && safe_dir "$2" && for f in "$2/$3.png" "$2/$3-plain.png"; do [ ! -L "$f" ] || rm -f -- "$f"; done',
+      "--", root.service.safePathsLib,
+      Quickshell.env("HOME") + "/.local/state/omarchy/lock-explorer-snapshots", sid]
     // Flip snapshot mode before the render delay so any layout it causes has
     // settled long before the geometry is measured and the frame grabbed.
     if (snapshotHost.item && snapshotHost.item.snapshotMode !== undefined)
@@ -748,8 +757,10 @@ Item {
 
   Process {
     id: snapshotMkdirProc
-    command: ["mkdir", "-p", Quickshell.env("HOME") + "/.local/state/omarchy/lock-explorer-snapshots"]
+    // The folder through safe-paths, and no link left where a grab is saved
+    // (saveToFile writes through one).
     onExited: function(code) {
+      if (code !== 0) { root.snapshotBusy = false; return }
       snapshotRenderTimer.restart()
     }
   }
@@ -2853,9 +2864,8 @@ Item {
                 }
 
                 Rectangle {
-                  // Rotation ships hidden in 1.5.0: enabling it installs a
-                  // passwordless-root helper (rotate-setup.sh) that has not
-                  // been tested end to end. Flip visible when that lands.
+                  // Rotation ships hidden: it has not been tested end to
+                  // end, and each step asks through polkit after login.
                   visible: false
                   width: rotateRow.implicitWidth + Style.space(8)
                   height: Style.space(30)

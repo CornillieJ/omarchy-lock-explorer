@@ -9,6 +9,7 @@ import "Designs.js" as Designs
 import "DisplayPower.js" as DisplayPower
 import "Bridge.js" as Bridge
 import "designs/Strings.js" as Strings
+import "designs" as Parts
 
 Item {
   id: root
@@ -216,7 +217,8 @@ Item {
   // a marker in the runtime dir that the wake removes, so a shell that starts
   // up and finds it knows its predecessor died with the display off, and
   // keeps the displays lit for the rest of this login instead.
-  readonly property string blankMarkerDir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/omarchy-lock-explorer"
+  // Never /tmp: a shared directory where another account could plant a link.
+  readonly property string blankMarkerDir: (Quickshell.env("XDG_RUNTIME_DIR") || (Quickshell.env("HOME") + "/.cache")) + "/omarchy-lock-explorer"
   property bool blankCrashed: false
 
   // Opt-in HDMI workaround; Never still applies independently on every setup.
@@ -1069,7 +1071,8 @@ Item {
     var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
     for (var i = 0; i < list.length; i++) {
       var entry = list[i]
-      if (entry && String(entry.id || "") === pluginId && entry.ownerMessage !== undefined) return String(entry.ownerMessage)
+      // The same cap as setOwnerMessage: the file can say anything.
+      if (entry && String(entry.id || "") === pluginId && entry.ownerMessage !== undefined) return String(entry.ownerMessage).substring(0, 120)
     }
     return ""
   }
@@ -1299,8 +1302,8 @@ Item {
     // grep says whether this file claims the same id, which is the whole
     // question. Hidden directories count, and a backup copy is usually one.
     command: ["bash", "-c",
-      "find \"$1\" -mindepth 2 -maxdepth 2 -name manifest.json 2>/dev/null | while read -r m; do " +
-      "grep -q \"\\\"id\\\"[[:space:]]*:[[:space:]]*\\\"$2\\\"\" \"$m\" && dirname \"$m\"; done",
+      "find \"$1\" -mindepth 2 -maxdepth 2 -name manifest.json -type f 2>/dev/null | while read -r m; do " +
+      "grep -D skip -q \"\\\"id\\\"[[:space:]]*:[[:space:]]*\\\"$2\\\"\" \"$m\" && dirname \"$m\"; done",
       "bash", Quickshell.env("HOME") + "/.config/omarchy/plugins", root.pluginId]
     stdout: StdioCollector { id: duplicatePluginStdout; waitForEnd: true }
     onExited: {
@@ -1597,8 +1600,9 @@ echo "$target"
     var safe = String(slug || "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "")
     if (safe.length === 0 || String(json || "").length === 0) return false
     if (componentSaveProc.running) return false
+    if (String(json).length > 65536) return false
     componentSaveProc.command = ["bash", "-c",
-      'mkdir -p "$1" && printf %s "$3" > "$1/$2.json"', "savecomponent", componentsDir, safe, String(json)]
+      'source "$4" && safe_dir "$1" && printf %s "$3" | put_file "$1" "$2.json"', "savecomponent", componentsDir, safe, String(json), safePathsLib]
     componentSaveProc.running = true
     logEvent("component-saved=" + safe)
     return true
@@ -1620,9 +1624,10 @@ echo "$target"
     running: true
     // slug<TAB>json, one component per line. The files the designer writes
     // have no newlines in them; tr keeps a hand-edited one from splitting the
-    // listing across lines.
+    // listing across lines. Plain files of at most 64 KiB only: a FIFO or a
+    // huge file would hold the scan up.
     command: ["bash", "-c",
-      'dir="$1"; mkdir -p "$dir"; for f in "$dir"/*.json; do [ -e "$f" ] || continue; printf "%s\\t" "$(basename "$f" .json)"; tr -d "\\n" < "$f"; printf "\\n"; done',
+      'dir="$1"; mkdir -p "$dir"; for f in "$dir"/*.json; do [ -f "$f" ] && [ ! -L "$f" ] && [ "$(stat -c %s -- "$f")" -le 65536 ] || continue; printf "%s\\t" "$(basename "$f" .json)"; head -c 65536 -- "$f" | tr -d "\\n"; printf "\\n"; done',
       "components", root.componentsDir]
     stdout: StdioCollector {
       id: componentsOut
@@ -1932,6 +1937,26 @@ printf "%s\\t%s\\n" "$target" "$base"
     }
   }
 
+  // Names that are joined into a path under one of the plugin's folders. They
+  // arrive over IPC (any process of the account can call it), from the saved
+  // settings and from design files, so they are held to a pattern instead of
+  // trusted: no separator, no leading dot, no "..".
+  function fileItemNameValid(n) {
+    var v = String(n || "")
+    return /^[A-Za-z0-9_-][A-Za-z0-9._ -]{0,127}$/.test(v) && v.indexOf("..") === -1
+  }
+  function layoutNameValid(n) {
+    return /^[A-Za-z0-9_-]{1,64}$/.test(String(n || ""))
+  }
+  // A boot option: a design id, or video:/custom:/snapshot: and a name.
+  function bootItemValid(v) {
+    v = String(v || "")
+    if (v.indexOf("custom:") === 0) return layoutNameValid(v.substring(7))
+    if (v.indexOf("video:") === 0) return fileItemNameValid(v.substring(6))
+    if (v.indexOf("snapshot:") === 0) return fileItemNameValid(v.substring(9))
+    return /^[a-z0-9-]{1,32}$/.test(v)
+  }
+
   // Delete a user design from ~/.config/omarchy/lock-designs. A clip design's
   // video goes with it, unless the boot screen, the Motion video or the unlock
   // clip still point at it, or another design names it.
@@ -1940,7 +1965,10 @@ printf "%s\\t%s\\n" "$target" "$base"
     if (!d || !d.path) return false
     var file = decodeURIComponent(String(d.path).replace(/^file:\/\//, ""))
     if (file.indexOf(userDesignsDir + "/") !== 0) return false
+    // The clip name is whatever the design file says; only a plain file name
+    // in lock-videos is ever deleted along with it.
     var clip = String(d.clipFile || "")
+    if (!fileItemNameValid(clip)) clip = ""
     if (clip.length > 0) {
       var tail = "/" + clip
       var keep = bootSetting === "video:" + clip
@@ -1960,7 +1988,7 @@ printf "%s\\t%s\\n" "$target" "$base"
 set -e
 file="$1"; videos="$2"; clip="$3"; dir="$4"
 rm -f -- "$file"
-if [[ -n $clip ]] && ! grep -qs -- "$clip" "$dir"/*.qml 2>/dev/null; then
+if [[ -n $clip ]] && ! grep -D skip -qs -- "$clip" "$dir"/*.qml 2>/dev/null; then
   rm -f -- "$videos/$clip"
 fi
 '
@@ -1980,6 +2008,7 @@ fi
   function deleteBootItem(id) {
     var v = String(id || "")
     if (v.indexOf("video:") !== 0 && v.indexOf("custom:") !== 0) return false
+    if (!bootItemValid(v)) return false
     if (v.indexOf("video:") === 0) {
       var tail = "/" + v.substring(6)
       if ((videoPath.length >= tail.length && videoPath.lastIndexOf(tail) === videoPath.length - tail.length)
@@ -1998,6 +2027,8 @@ fi
   readonly property string deleteBootItemScript: '
 set -e
 id="$1"; videos="$2"; bootdir="$3"; lockdir="$4"; previews="$5"
+# The caller checks the name too; a separator or a dot-dot never gets here.
+case "${id#*:}" in */* | .* | *..* | "") exit 1 ;; esac
 case "$id" in
   video:*)
     f="${id#video:}"
@@ -2101,8 +2132,10 @@ out="$dir/$stem.png"
 if [[ ! -s "$out" || "$src" -nt "$out" ]]; then
   tmp=$(mktemp --suffix=.png)
   trap "rm -f -- $tmp" EXIT
-  ffmpeg -y -loglevel error -sseof -1 -i "$src" -update 1 "$tmp" || true
-  [[ -s "$tmp" ]] || ffmpeg -y -loglevel error -i "$src" -update 1 "$tmp"
+  # A local video container from a file only, as in plymouth/cliptwin.sh.
+  clip_in=(-protocol_whitelist file -format_whitelist mov,mp4,m4a,3gp,3g2,mj2,matroska,webm)
+  ffmpeg -y -loglevel error -sseof -1 "${clip_in[@]}" -i "$src" -update 1 "$tmp" || true
+  [[ -s "$tmp" ]] || ffmpeg -y -loglevel error "${clip_in[@]}" -i "$src" -update 1 "$tmp"
   put_file "$dir" "$stem.png" < "$tmp"
 fi
 echo "$out"
@@ -2138,7 +2171,8 @@ echo "$out"
   readonly property string bootSetting: {
     var value = bootOverride.length > 0 ? bootOverride : configuredBoot
     if (value === "follow" || value === "stock" || value === "theme" || value === "rotate") return value
-    if (value.indexOf("snapshot:") === 0 || value.indexOf("video:") === 0 || value.indexOf("custom:") === 0) return value
+    if (value.indexOf("snapshot:") === 0 || value.indexOf("video:") === 0 || value.indexOf("custom:") === 0)
+      return bootItemValid(value) ? value : "stock"
     var d = Designs.byId(value, root.userDesigns)
     return d && d.boot === true ? value : "stock"
   }
@@ -2163,6 +2197,8 @@ echo "$out"
     if (v !== "follow" && v !== "stock" && v !== "theme" && v !== "rotate" && v.indexOf("video:") !== 0 && v.indexOf("custom:") !== 0 && v.indexOf("snapshot:") !== 0) {
       var d = Designs.byId(v, root.userDesigns)
       if (!d || d.boot !== true) return false
+    } else if (v.indexOf(":") > 0 && !bootItemValid(v)) {
+      return false
     }
     if (bootApplying) return false
     bootOverride = v
@@ -2214,10 +2250,18 @@ echo "$out"
   // apply.sh records what it installed and which Omarchy theme the colors
   // came from; picking it up here keeps the state right across shell restarts
   // and command line applies.
+  // Watched by a FileView that never reads; the read is a CappedFile.
   FileView {
     path: root.stateHome + "/omarchy/lock-explorer-boot"
+    preload: false
     watchChanges: true
     printErrors: false
+    onFileChanged: bootStateFile.reload()
+  }
+  Parts.CappedFile {
+    id: bootStateFile
+    path: root.stateHome + "/omarchy/lock-explorer-boot"
+    maxBytes: 4096
     onLoaded: {
       var parts = String(text()).trim().split(/\s+/)
       var value = parts[0] || ""
@@ -2228,7 +2272,6 @@ echo "$out"
       root.bootAppliedVersion += 1
     }
     onLoadFailed: { root.bootApplied = ""; root.bootAppliedTheme = "" }
-    onFileChanged: reload()
   }
 
   // The boot screen colors are baked in at apply time, so a theme switch
@@ -2408,10 +2451,16 @@ echo "$out"
   signal bootDesignLoaded(string name, string content)
   property string bootDesignPendingLoad: ""
 
+  // Layouts are read as a plain file of at most 64 KiB, never through a link
+  // or anything that could block (a FIFO), and only by a checked name.
   function loadBootDesign(name) {
+    if (!layoutNameValid(name)) return false
     bootDesignPendingLoad = String(name)
-    bootLoadProc.command = ["cat", home + "/.config/omarchy/boot-designs/" + bootDesignPendingLoad + ".conf"]
+    bootLoadProc.command = ["bash", "-c",
+      'f="$1"; [ -f "$f" ] && [ ! -L "$f" ] && [ "$(stat -c %s -- "$f")" -le 65536 ] && head -c 65536 -- "$f"',
+      "--", home + "/.config/omarchy/boot-designs/" + bootDesignPendingLoad + ".conf"]
     bootLoadProc.running = true
+    return true
   }
 
   Process {
@@ -2425,11 +2474,15 @@ echo "$out"
 
   property string bootSaveName: ""
   function saveBootDesign(name, content) {
+    if (!layoutNameValid(name)) return false
+    var text = String(content || "")
+    if (text.length > 65536) return false
     bootSaveName = String(name)
     bootSaveProc.command = ["bash", "-c",
-      'mkdir -p "$HOME/.config/omarchy/boot-designs" && printf %s "$1" > "$HOME/.config/omarchy/boot-designs/$2.conf"',
-      "--", String(content), String(name)]
+      'source "$1" && d="$HOME/.config/omarchy/boot-designs" && safe_dir "$d" && printf %s "$2" | put_file "$d" "$3.conf"',
+      "--", safePathsLib, text, bootSaveName]
     bootSaveProc.running = true
+    return true
   }
 
   Process {
@@ -2456,8 +2509,8 @@ echo "$out"
 
   function createBootDesign() {
     bootCreateProc.command = ["bash", "-c",
-      'dir="$HOME/.config/omarchy/boot-designs"; mkdir -p "$dir"; n="my-boot"; i=2; while [ -f "$dir/$n.conf" ]; do n="my-boot-$i"; i=$((i+1)); done; cp "$1" "$dir/$n.conf"; echo "$n"',
-      "--", pluginDir + "/plymouth/custom/template.conf"]
+      'source "$2" || exit 1; dir="$HOME/.config/omarchy/boot-designs"; safe_dir "$dir"; n="my-boot"; i=2; while [ -e "$dir/$n.conf" ] || [ -L "$dir/$n.conf" ]; do n="my-boot-$i"; i=$((i+1)); done; put_file "$dir" "$n.conf" < "$1" && echo "$n"',
+      "--", pluginDir + "/plymouth/custom/template.conf", safePathsLib]
     bootCreateProc.running = true
   }
 
@@ -2479,26 +2532,29 @@ echo "$out"
 
   // Boot screen rotation: a set of options that advances one step after
   // every boot. The screen is baked into the boot image, so the swap happens
-  // in the background right after login -- silently through the root path
-  // unit rotate-setup.sh installs (one pkexec, once), with a normal polkit
-  // prompt as the fallback. Saved on the plugin entry as bootRotation.
+  // right after login, through the same polkit prompt as any boot screen
+  // change. Saved on the plugin entry as bootRotation.
   property var bootRotationOverride: null
   readonly property var configuredBootRotation: {
     var cfg = root.settingsConfig
     var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
     for (var i = 0; i < list.length; i++) {
       var entry = list[i]
-      if (entry && String(entry.id || "") === pluginId && Array.isArray(entry.bootRotation)) return entry.bootRotation
+      if (entry && String(entry.id || "") === pluginId && Array.isArray(entry.bootRotation))
+        return entry.bootRotation.filter(function(x) { return root.bootItemValid(x) })
     }
     return []
   }
   readonly property var bootRotation: bootRotationOverride !== null ? bootRotationOverride : configuredBootRotation
-  property bool bootRotateSilent: false
+  // Earlier versions could install a root path unit that applied the next
+  // theme without asking; a theme picks the plugin Plymouth loads as root,
+  // so that is no longer used, and removeBootRotationHelper() takes it out.
+  property bool bootRotateHelperInstalled: false
   property string bootRotateNext: ""
 
   function toggleBootRotation(id) {
     var v = String(id || "")
-    if (v.length === 0 || v === "stock") return false
+    if (v.length === 0 || v === "stock" || !bootItemValid(v)) return false
     var list = bootRotation.slice()
     var idx = list.indexOf(v)
     if (idx === -1) list.push(v)
@@ -2539,41 +2595,35 @@ echo "$out"
   }
 
   function enableBootRotation() {
-    if (bootRotateSilent) { setBoot("rotate"); return }
-    // No home argument: the setup script reads it from the account that
-    // authenticated to pkexec. It lands in a root-owned helper, and $HOME is
-    // whatever the process that started the shell set it to.
-    bootRotateSetupProc.command = ["pkexec", "bash", pluginDir + "/plymouth/rotate-setup.sh", "install"]
-    bootRotateSetupProc.running = true
+    setBoot("rotate")
+  }
+
+  function removeBootRotationHelper() {
+    if (bootRotateRemoveProc.running) return false
+    bootRotateRemoveProc.command = ["pkexec", "bash", pluginDir + "/plymouth/rotate-setup.sh", "remove"]
+    bootRotateRemoveProc.running = true
+    return true
   }
 
   Process {
-    id: bootRotateSetupProc
+    id: bootRotateRemoveProc
     stdout: StdioCollector { }
     stderr: StdioCollector { }
     onExited: function(exitCode) {
-      if (exitCode === 0) {
-        root.bootRotateSilent = true
-        root.setBoot("rotate")
-        root.logEvent("boot-rotate-setup=ok")
-      } else {
-        root.logEvent("boot-rotate-setup-failed=" + exitCode)
-      }
+      root.logEvent(exitCode === 0 ? "boot-rotate-helper-removed" : "boot-rotate-helper-remove-failed=" + exitCode)
+      bootRotateCheckProc.running = true
     }
   }
 
   Process {
     id: bootRotateCheckProc
-    // The helper rotate-setup.sh wrote has to be one that takes the spooled
-    // theme as a tar file; an older one that walked a directory is not used,
-    // so rotation falls back to the prompt until it is set up again.
-    command: ["bash", "-c", "[ -f /etc/systemd/system/omarchy-lock-explorer-boot.path ] && grep -q lock-explorer-boot-spool.tar /usr/local/lib/omarchy-lock-explorer-rotate.sh 2>/dev/null && echo yes || echo no"]
+    command: ["bash", "-c", "[ -e /etc/systemd/system/omarchy-lock-explorer-boot.path ] && echo yes || echo no"]
     stdout: StdioCollector {
       id: bootRotateCheckOut
       waitForEnd: true
       onStreamFinished: {
-        root.bootRotateSilent = String(bootRotateCheckOut.text || "").trim() === "yes"
-        root.maybeRotateBoot()
+        root.bootRotateHelperInstalled = String(bootRotateCheckOut.text || "").trim() === "yes"
+        if (root.bootRotateHelperInstalled) root.logEvent("boot-rotate-helper-present (omarchy-shell lock removeBootRotationHelper)")
       }
     }
   }
@@ -2593,7 +2643,7 @@ echo "$out"
 
   Process {
     id: bootRotateStampProc
-    command: ["bash", "-c", "bid=$(cat /proc/sys/kernel/random/boot_id); f=\"$HOME/.local/state/omarchy/lock-explorer-boot-rotated\"; [ \"$(cat \"$f\" 2>/dev/null)\" = \"$bid\" ] && echo skip || { echo \"$bid\" > \"$f\"; echo go; }"]
+    command: ["bash", "-c", "bid=$(cat /proc/sys/kernel/random/boot_id); f=\"$HOME/.local/state/omarchy/lock-explorer-boot-rotated\"; [ -f \"$f\" ] && [ ! -L \"$f\" ] && [ \"$(head -c 64 -- \"$f\")\" = \"$bid\" ] && echo skip || { [ ! -L \"$f\" ] || rm -f -- \"$f\"; echo \"$bid\" > \"$f\"; echo go; }"]
     stdout: StdioCollector {
       id: bootRotateStampOut
       waitForEnd: true
@@ -2601,14 +2651,7 @@ echo "$out"
         if (String(bootRotateStampOut.text || "").trim() !== "go") return
         if (root.bootRotateNext.length === 0 || root.bootApplying) return
         root.logEvent("boot-rotate -> " + root.bootRotateNext)
-        if (root.bootRotateSilent) {
-          root.bootApplying = true
-          root.bootApplyTarget = root.bootRotateNext
-          bootApplyProc.command = ["env", "BOOT_CLIP_SECONDS=" + root.bootClipSeconds, "bash", root.pluginDir + "/plymouth/apply.sh", root.bootRotateNext, "--spool"]
-          bootApplyProc.running = true
-        } else {
-          root.applyBoot(true, root.bootRotateNext)
-        }
+        root.applyBoot(true, root.bootRotateNext)
       }
     }
   }
@@ -2623,22 +2666,36 @@ echo "$out"
     onTriggered: {
       root.bootResyncArmed = true
       root.refreshBootLists()
-      // The silent-rotation check chains into maybeRotateBoot; the resync
-      // runs after so a rotation that just advanced satisfies it.
       bootRotateCheckProc.running = true
+      // The resync runs after the rotation so one that just advanced
+      // satisfies it.
+      root.maybeRotateBoot()
       root.maybeResyncBoot()
     }
   }
 
   // The Omarchy theme that is on: the boot screen resyncs its palette to it,
   // and the design follows it when asked to (followThemeDesign).
+  // Watched by a FileView that never reads; the read is a CappedFile.
   FileView {
     path: root.stateHome + "/omarchy/current/theme.name"
+    preload: false
     watchChanges: true
     printErrors: false
-    onLoaded: { root.bootCurrentTheme = String(text()).trim(); root.maybeResyncBoot(); root.followThemeDesign() }
+    onFileChanged: themeNameFile.reload()
+  }
+  Parts.CappedFile {
+    id: themeNameFile
+    path: root.stateHome + "/omarchy/current/theme.name"
+    maxBytes: 256
+    onLoaded: {
+      // Joined into preview file names; anything off a plain name is ignored.
+      var t = String(text()).trim()
+      root.bootCurrentTheme = /^[A-Za-z0-9._-]{1,64}$/.test(t) && t.indexOf("..") === -1 ? t : ""
+      root.maybeResyncBoot()
+      root.followThemeDesign()
+    }
     onLoadFailed: root.bootCurrentTheme = ""
-    onFileChanged: reload()
   }
 
   // `how` says what kind of pick this is. Nothing: a pick, filed under the
@@ -2794,6 +2851,11 @@ echo "$out"
   // clipUnlocking is the hold, clipFailsafe the way out if the file misbehaves.
   property bool clipUnlocking: false
   property bool unlockPlayback: false
+  // Set only by finishUnlock, which only a successful password, fingerprint,
+  // face or security-key check reaches; releaseLock drops the session lock
+  // for nothing else. A design says when its unlock clip is done, and a user
+  // design is arbitrary QML: its word must never be enough on its own.
+  property bool unlockAuthorized: false
   property bool previewClipPlaying: false
   // Nothing should decode video into a screen that is switched off.
   property bool screenBlanked: false
@@ -2943,7 +3005,7 @@ echo "$out"
     }
   }
 
-  readonly property string lockClaimPath: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/omarchy-lock-explorer.lock-held"
+  readonly property string lockClaimPath: (Quickshell.env("XDG_RUNTIME_DIR") || (Quickshell.env("HOME") + "/.cache")) + "/omarchy-lock-explorer.lock-held"
   readonly property string instanceToken: String(Date.now()) + "-" + String(Math.floor(Math.random() * 1e9))
   readonly property bool holdsLock: {
     root.lockStateRevision
@@ -2953,6 +3015,8 @@ echo "$out"
   FileView {
     id: lockClaim
     path: root.lockClaimPath
+    // Written, never read here.
+    preload: false
     atomicWrites: true
     printErrors: false
   }
@@ -3079,6 +3143,7 @@ echo "$out"
   function finishUnlock() {
     if (!root.locked && !lockRequested) return
     if (unlocking || clipUnlocking) return
+    unlockAuthorized = true
 
     var away = awayReport ? awayFailures(Date.now()) : []
     pendingAwayReport = away.length > 0 ? away : null
@@ -3119,6 +3184,11 @@ echo "$out"
   }
 
   function releaseLock() {
+    if (!unlockAuthorized) {
+      logEvent("unlock-refused (no authentication)")
+      return
+    }
+    unlockAuthorized = false
     unlockTimer.stop()
     clipFailsafe.stop()
     var hadClip = clipUnlocking
@@ -3138,6 +3208,7 @@ echo "$out"
 
   function cancelUnlockAnimation() {
     if (!unlocking && !clipUnlocking) return
+    unlockAuthorized = false
     unlockTimer.stop()
     clipFailsafe.stop()
     unlocking = false
@@ -3633,7 +3704,8 @@ echo "$out"
           showCapsBadge: root.showCapsBadge
           allowPasswordToggle: root.allowPasswordToggle
           showAuthIcons: root.showAuthIcons
-          onUnlockFinished: root.releaseLock()
+          // Only ends a clip unlock that authentication started.
+          onUnlockFinished: if (root.clipUnlocking) root.releaseLock()
           onPasswordTextEdited: function(password) { root.enteredPassword = password }
           onSubmitPassword: function(password) { root.submitPassword(password) }
           onClearFailureRequested: root.failureMessage = ""
@@ -3961,7 +4033,7 @@ echo "$out"
     // Files built on ClipDesign are tagged (with their clip file when it is
     // named inline) so they keep their animation flag and their video across
     // rescans.
-    command: ["bash", "-c", "for f in \"$0\"/*.qml; do [ -e \"$f\" ] || continue; c=$(grep -o 'clipName: \"[^\"]*\"' \"$f\" 2>/dev/null | head -1 | cut -d'\"' -f2); if [ -n \"$c\" ]; then printf '%s\\tclip\\t%s\\n' \"$f\" \"$c\"; elif grep -q ClipDesign \"$f\" 2>/dev/null; then printf '%s\\tclip\\n' \"$f\"; elif grep -q '// designer:1:' \"$f\" 2>/dev/null; then printf '%s\\tdesigner\\n' \"$f\"; else printf '%s\\n' \"$f\"; fi; done", root.userDesignsDir]
+    command: ["bash", "-c", "for f in \"$0\"/*.qml; do [ -f \"$f\" ] || continue; c=$(grep -o 'clipName: \"[^\"]*\"' \"$f\" 2>/dev/null | head -1 | cut -d'\"' -f2); if [ -n \"$c\" ]; then printf '%s\\tclip\\t%s\\n' \"$f\" \"$c\"; elif grep -q ClipDesign \"$f\" 2>/dev/null; then printf '%s\\tclip\\n' \"$f\"; elif grep -q '// designer:1:' \"$f\" 2>/dev/null; then printf '%s\\tdesigner\\n' \"$f\"; else printf '%s\\n' \"$f\"; fi; done", root.userDesignsDir]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -4140,7 +4212,7 @@ echo "$out"
       // that happens to find no key is not somebody walking away with it.
       if (keyEvent && !root.lockRequested && root.lockOnKeyRemoval
           && wasPresent && !root.fido2TokenPresent) {
-        if (root.passwordPamConfigured && !root.locked) {
+        if (root.passwordPamConfigured && !root.lockRequested) {
           root.logEvent("lock-on-key-removal")
           root.beginLock()
         }
@@ -4370,6 +4442,7 @@ echo "$out"
     id: explorerApiComponent
     QtObject {
       readonly property string designId: root.designId
+      readonly property string safePathsLib: root.safePathsLib
       readonly property int designsRevision: root.designsRevision
       readonly property var userDesigns: root.userDesigns
       readonly property string backgroundPath: root.backgroundPath
@@ -4539,6 +4612,7 @@ echo "$out"
       function deleteBootItem(id) { return root.deleteBootItem(id) }
       function toggleBootRotation(id) { return root.toggleBootRotation(id) }
       function enableBootRotation() { return root.enableBootRotation() }
+      function removeBootRotationHelper() { return root.removeBootRotationHelper() }
     }
   }
 
@@ -4640,7 +4714,10 @@ echo "$out"
 
     function lock(): string {
       if (!root.passwordPamConfigured) return "missing-pam"
-      if (!root.locked && !root.beginLock()) return "failed"
+      // lockRequested, not locked: during the unlock animation the session is
+      // still locked but on its way out, and a lock asked for then (before
+      // sleep, say) has to cancel that instead of being answered "ok".
+      if (!root.lockRequested && !root.beginLock()) return "failed"
       return "ok"
     }
 
@@ -4951,6 +5028,13 @@ echo "$out"
       return "ok"
     }
 
+    // Takes out the passwordless rotation helper earlier versions installed
+    // (one polkit prompt); "absent" when there is none.
+    function removeBootRotationHelper(): string {
+      if (!root.bootRotateHelperInstalled) return "absent"
+      return root.removeBootRotationHelper() ? "ok" : "busy"
+    }
+
     function setBootClipSeconds(value: string): string {
       return root.setBootClipSeconds(value) ? "ok" : "failed"
     }
@@ -5185,7 +5269,7 @@ echo "$out"
 
     // Open the built-in editor on a custom boot layout.
     function editBootLayout(name: string): string {
-      root.loadBootDesign(String(name || ""))
+      if (!root.loadBootDesign(String(name || ""))) return "invalid-name"
       root.exploreViewRequested("full")
       if (root.shell && typeof root.shell.summon === "function")
         return root.shell.summon(root.pluginId, "{}") ? "ok" : "failed"

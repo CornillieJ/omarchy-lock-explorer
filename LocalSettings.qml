@@ -76,6 +76,10 @@ Item {
     return false
   }
 
+  // The one user file read through a FileView, on purpose: the first read has
+  // to block (see above), and shell.json is the host's own settings file,
+  // which omarchy-shell reads the same way at every start -- a FIFO or a huge
+  // file there stops the host whether this plugin is installed or not.
   FileView {
     id: settingsFile
     path: root.path

@@ -23,11 +23,16 @@ DesignBase {
   }
   readonly property bool hasMedia: player !== null
   readonly property bool playing: player && player.playbackState === MprisPlaybackState.Playing
-  readonly property string title: player ? player.trackTitle : ""
-  readonly property string artist: player ? (player.trackArtist || "") : ""
-  readonly property string album: player ? (player.trackAlbum || "") : ""
-  readonly property string artUrl: player ? (player.trackArtUrl || "") : ""
-  readonly property string identity: player ? (player.identity || "") : ""
+  readonly property string title: player ? String(player.trackTitle || "").substring(0, 200) : ""
+  readonly property string artist: player ? String(player.trackArtist || "").substring(0, 200) : ""
+  readonly property string album: player ? String(player.trackAlbum || "").substring(0, 200) : ""
+  // Cover art comes from whichever program on the session bus claims to be a
+  // player: a local file or an https URL only, never another scheme.
+  readonly property string artUrl: {
+    var u = player ? String(player.trackArtUrl || "") : ""
+    return /^(file:\/\/\/|https:\/\/)/.test(u) ? u : ""
+  }
+  readonly property string identity: player ? String(player.identity || "").substring(0, 64) : ""
 
   Wallpaper { anchors.fill: parent; lock: lock; blur: 1.0; dim: 0.25; vignette: false }
 
@@ -109,6 +114,8 @@ DesignBase {
           Image {
             anchors.fill: parent
             source: lock.artUrl
+            sourceSize.width: 300
+            sourceSize.height: 300
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             visible: lock.hasMedia && status === Image.Ready

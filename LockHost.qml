@@ -269,10 +269,13 @@ Item {
     function onShowAuthIconsChanged() { host.regrab() }
   }
 
-  FileView {
+  // A design file of the user's own: read as a plain file (a link to one is
+  // fine), at most 1 MiB.
+  CappedFile {
     id: userFile
     path: host.userLocalPath
-    printErrors: false
+    allowLinks: true
+    maxBytes: 1048576
     onLoaded: host.rebuildUser()
     onLoadFailed: { host.loadError = "Cannot read " + host.userLocalPath }
   }

@@ -33,6 +33,7 @@ DesignBase {
     anchors.top: parent.top
     anchors.margins: lock.margin
     text: lock.greeting() + ", " + lock.displayName
+    textFormat: Text.PlainText
     color: lock.withAlpha(Commons.Color.lock.text, 0.8)
     font.family: Style.font.family
     font.pixelSize: Style.font.subtitle

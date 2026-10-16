@@ -12,22 +12,15 @@ source "$(dirname "$(realpath "$0")")/../common.sh"
 staging="${1:?usage: generate.sh <staging-dir> <layout.conf> [id]}"
 conf="${2:?missing layout.conf}"
 id="${3:-custom:$(basename "$conf" .conf)}"
+# The id is written into the generated script and the state file.
+[[ $id =~ ^[A-Za-z0-9:._-]{1,80}$ ]] || { echo "Refusing design id: $id" >&2; exit 1; }
 
 [[ -f $conf ]] || { echo "No such layout: $conf" >&2; exit 1; }
 mkdir -p "$staging"
 
-conf_get() {
-  awk -F= -v k="$1" '
-    /^[ \t]*#/ { next }
-    {
-      key = $1; gsub(/^[ \t]+|[ \t]+$/, "", key)
-      if (key == k) {
-        sub(/^[^=]*=/, ""); gsub(/^[ \t]+|[ \t]+$/, "")
-        print; exit
-      }
-    }' "$conf"
-}
-val() { local v; v=$(conf_get "$1"); printf '%s' "${v:-$2}"; }
+# Every key through layout_val (common.sh): the values reach generated
+# Plymouth script, magick arguments and shell arithmetic below.
+val() { layout_val "$conf" "$1" "$2"; }
 
 bg_t=$(theme_color background); fg_t=$(theme_color foreground)
 accent_t=$(theme_color accent blue); [[ -n $accent_t ]] || accent_t=$fg_t
@@ -54,9 +47,9 @@ background=$(val background theme)
 background_plain=$(val background_plain "")
 scanlines=$(val scanlines off)
 logo=$(val logo none);            logo_y=$(val logo_y 36);        logo_h=$(val logo_height 120)
-title=$(expand_vars "$(val title "")");        title_y=$(val title_y 18)
+title=$(layout_text "$(expand_vars "$(val title "")")");        title_y=$(val title_y 18)
 title_size=$(val title_size 26);  title_c=$(resolve_color "$(val title_color foreground)")
-subtitle=$(expand_vars "$(val subtitle "")");  subtitle_y=$(val subtitle_y 26)
+subtitle=$(layout_text "$(expand_vars "$(val subtitle "")")");  subtitle_y=$(val subtitle_y 26)
 subtitle_size=$(val subtitle_size 15); subtitle_c=$(resolve_color "$(val subtitle_color dim)")
 entry=$(val entry pill);          entry_y=$(val entry_y 72);      entry_w=$(val entry_width 380)
 # "embedded" entry: the input box is part of the background image (a design
@@ -64,7 +57,7 @@ entry=$(val entry pill);          entry_y=$(val entry_y 72);      entry_w=$(val 
 # aligned the way the design aligns its own dots.
 entry_x=$(val entry_x 50);        entry_wp=$(val entry_wp 0);     entry_hp=$(val entry_hp 0)
 entry_align=$(val entry_align center)
-hint=$(expand_vars "$(val hint "")")
+hint=$(layout_text "$(expand_vars "$(val hint "")")")
 
 accent_i=$(hex_ints "$accent_t"); bg_i=$(hex_ints "$bg_t")
 fg_f=$(hex_floats "$fg_t"); dim_f=$(hex_floats "$dim_t"); bg_f=$(hex_floats "$bg_t")
@@ -81,8 +74,10 @@ case "$background" in
   theme) : ;;
   wallpaper)
     link="$HOME/.local/state/omarchy/current/background"
-    if [[ -e $link ]]; then
-      magick "$(readlink -f "$link")" -resize 1920x1080^ -gravity center -extent 1920x1080 \
+    # Every user image goes in through image_in (common.sh): decoded as what
+    # its own signature says it is, and skipped when that is not an image.
+    if [[ -e $link ]] && src=$(image_in "$(readlink -f "$link")"); then
+      magick "$src" -resize 1920x1080^ -gravity center -extent 1920x1080 \
         -blur 0x12 -fill black -colorize 40 "$staging/bg.png"
     fi ;;
   '#'*) magick -size 64x64 "xc:$background" "$staging/bg.png" ;;
@@ -91,18 +86,20 @@ case "$background" in
   # Split puts its input box near the right edge -- so a file background keeps
   # its aspect ratio and the script fits it to the framebuffer instead. '>'
   # only ever shrinks, so only an oversized image is touched.
-  *) [[ -f $background ]] && magick "$background" -resize "${canvas_max}>" "$staging/bg.png" ;;
+  *) if src=$(image_in "$background"); then magick "$src" -resize "${canvas_max}>" "$staging/bg.png"; fi ;;
 esac
 
-[[ -n $background_plain && -f $background_plain ]] &&
-  magick "$background_plain" -resize "${canvas_max}>" "$staging/bg-plain.png"
+if [[ -n $background_plain ]] && src=$(image_in "$background_plain"); then
+  magick "$src" -resize "${canvas_max}>" "$staging/bg-plain.png"
+fi
 
 [[ $scanlines == on ]] && magick -size 8x3 xc:none -fill 'rgba(0,0,0,0.12)' -draw 'rectangle 0,2 7,2' "$staging/scanline.png"
 
 case "$logo" in
   none) : ;;
-  theme) [[ -f "$HOME/.local/state/omarchy/current/theme/unlock.png" ]] && cp "$HOME/.local/state/omarchy/current/theme/unlock.png" "$staging/logo.png" ;;
-  *) [[ -f $logo ]] && cp "$logo" "$staging/logo.png" ;;
+  theme) if src=$(image_in "$HOME/.local/state/omarchy/current/theme/unlock.png"); then magick "${src}[0]" "png:$staging/logo.png"; fi ;;
+  # Re-encoded, never copied: root takes only real PNG files in a theme.
+  *) if src=$(image_in "$logo"); then magick "${src}[0]" "png:$staging/logo.png"; fi ;;
 esac
 
 case "$entry" in

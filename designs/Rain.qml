@@ -91,6 +91,7 @@ DesignBase {
       Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: "wake up, " + lock.displayName + "..."
+        textFormat: Text.PlainText
         color: lock.withAlpha(Commons.Color.lock.text, 0.8)
         font.family: Style.font.family
         font.pixelSize: Style.font.heading

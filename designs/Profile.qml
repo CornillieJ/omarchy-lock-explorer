@@ -57,6 +57,7 @@ DesignBase {
       Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: lock.displayName
+        textFormat: Text.PlainText
         color: Commons.Color.lock.text
         font.family: Style.font.family
         font.pixelSize: Style.font.displayLarge

@@ -37,6 +37,7 @@ DesignBase {
   }
 
   component Osd: Text {
+    textFormat: Text.PlainText
     color: Commons.Color.lock.text
     font.family: Style.font.family
     font.pixelSize: lock.osdSize

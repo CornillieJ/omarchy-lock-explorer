@@ -522,6 +522,11 @@ Easiest: open the explorer, pick a design you like and press `C`. That copies it
 `extras/lock-designs/MyDesign.qml`. You can also just drop `.qml` files in that folder yourself;
 they show up under Custom, named after the file (`My Design` for `MyDesign.qml`, id `my-mydesign`).
 
+A design is QML code, and it runs inside the shell and on the lock screen: it sees what you type
+into the password field and can run programs as you. Treat a design file from someone else like a
+script from someone else, and read it before you drop it in. What a design cannot do is end the
+lock: only a correct password, fingerprint, face or security key does that.
+
 ```sh
 omarchy-shell lock customize zen        # copy the Zen design to ~/.config/omarchy/lock-designs/Zen.qml
 omarchy-shell lock editDesign my-zen    # open it in your editor
@@ -697,7 +702,9 @@ and binutils' `objcopy`/`objdump` for the addon) and writes one file,
 applied-state marker `~/.local/state/omarchy/lock-explorer-boot`. "Untouched" deletes the addon
 again. On systems without Omarchy's UKI boot the legacy path bakes the theme into
 `/usr/share/plymouth/themes/omarchy-boot/` with `plymouth-set-default-theme` and an initramfs
-rebuild instead. The optional `extras/boot-vm-test.sh` and `extras/addon-vm-test.sh` need the
+rebuild instead. Behind the password prompt, root takes the theme as one archive, accepts only
+PNG images, the theme's script and its own name marker, writes the `.plymouth` file itself
+(always the `script` plugin) and builds the addon itself; nothing runs as root without asking. The optional `extras/boot-vm-test.sh` and `extras/addon-vm-test.sh` need the
 QEMU packages listed above and never touch the host.
 
 ## Credits

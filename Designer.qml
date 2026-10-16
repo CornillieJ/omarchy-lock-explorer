@@ -97,9 +97,22 @@ Item {
 
   // -------------------------------------------------------------- the file
 
+  // Reads go through CappedFile (a plain file, a link to one is fine, at most
+  // 1 MiB); the FileView only writes, and never reads the file itself.
+  CappedFile {
+    id: reader
+    path: designer.path
+    allowLinks: true
+    maxBytes: 1048576
+    preload: false
+    onLoadFailed: designer.loadError = designer.tr("Cannot read %1").arg(designer.path)
+    onLoaded: designer.adopt(reader.text())
+  }
+
   FileView {
     id: file
     path: designer.path
+    preload: false
     watchChanges: false
     atomicWrites: true
     printErrors: false
@@ -110,8 +123,6 @@ Item {
         designer.service.reloadDesigns()
     }
     onSaveFailed: function(error) { designer.status = designer.tr("Save failed: %1").arg(error) }
-    onLoadFailed: designer.loadError = designer.tr("Cannot read %1").arg(designer.path)
-    onLoaded: designer.adopt(file.text())
   }
 
   onPathChanged: if (path.length > 0) load()
@@ -125,7 +136,8 @@ Item {
   function load() {
     loadError = ""
     status = ""
-    file.reload()
+    // After the bindings settle: the reader's path follows designer.path.
+    Qt.callLater(reader.reload)
   }
 
   function adopt(text) {

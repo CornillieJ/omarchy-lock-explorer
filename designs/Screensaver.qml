@@ -15,9 +15,9 @@ DesignBase {
   property string logo: "omarchy"
   property int lastPick: -1
 
-  FileView {
+  CappedFile {
     path: Quickshell.env("HOME") + "/.config/omarchy/branding/screensaver.txt"
-    printErrors: false
+    maxBytes: 65536
     onLoaded: {
       var t = String(text() || "").replace(/\s+$/, "")
       if (t.length > 0) lock.logo = t

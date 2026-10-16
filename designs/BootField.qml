@@ -101,6 +101,7 @@ Row {
         anchors.leftMargin: Style.space(10)
         anchors.verticalCenter: parent.verticalCenter
         text: field.optionNames[field.value] || field.value
+        textFormat: Text.PlainText
         color: field.fg
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.bodySmall
@@ -136,6 +137,7 @@ Row {
           anchors.leftMargin: Style.space(10)
           anchors.verticalCenter: parent.verticalCenter
           text: field.optionNames[optionRow.modelData] || optionRow.modelData
+          textFormat: Text.PlainText
           color: optionRow.modelData === field.value ? field.accent : field.fg
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.bodySmall

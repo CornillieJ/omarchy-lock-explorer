@@ -540,15 +540,31 @@ function starterDoc(name) {
   return doc
 }
 
+// The name lands in a comment of the generated QML and each id after `id:`,
+// and both can come from a file or a pasted component: the name loses its
+// control characters, and an id has to be n<number>, unique, or gets one.
+function cleanName(name) {
+  var v = String(name || "").replace(/[\u0000-\u001f\u007f\u2028\u2029]/g, " ").trim().substring(0, 80)
+  return v.length > 0 ? v : DEFAULT_NAME
+}
+
 function validate(doc) {
   if (!doc || typeof doc !== "object") return null
   if (!(doc.nodes instanceof Array)) return null
-  var out = { v: VERSION, name: String(doc.name || DEFAULT_NAME), corners: clampCorners(doc.corners), nodes: [] }
+  var out = { v: VERSION, name: cleanName(doc.name), corners: clampCorners(doc.corners), nodes: [] }
+  var used = {}
+  var next = 1
   for (var i = 0; i < doc.nodes.length; i++) {
     var n = doc.nodes[i]
     if (!n || !KINDS[n.kind]) continue
+    var id = String(n.id || "")
+    if (!/^n[0-9]{1,6}$/.test(id) || used[id]) {
+      while (used["n" + next] || doc.nodes.some(function(o) { return o && String(o.id) === "n" + next })) next++
+      id = "n" + next
+    }
+    used[id] = true
     out.nodes.push({
-      id: String(n.id || ("n" + (i + 1))),
+      id: id,
       kind: String(n.kind),
       anchor: ANCHORS.indexOf(n.anchor) === -1 ? "center" : n.anchor,
       dx: Math.round(Number(n.dx) || 0),
@@ -653,6 +669,7 @@ function anchorLines(node, indent) {
 // layout comment above it is what the designer reads back; the code is
 // rewritten from it on every save.
 function generate(doc, pluginId) {
+  doc = validate(doc) || { name: DEFAULT_NAME, corners: 0, nodes: [] }
   var out = []
   var nodes = doc.nodes || []
   var inputNode = null

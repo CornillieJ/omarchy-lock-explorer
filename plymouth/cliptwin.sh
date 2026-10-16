@@ -12,6 +12,10 @@ source "$(dirname "$(realpath "$0")")/common.sh"
 staging="${1:?usage: cliptwin.sh <staging-dir> <design-id> <clip-file>}"
 design="${2:?missing design id}"
 clip="$HOME/.config/omarchy/lock-videos/${3:?missing clip filename}"
+[[ $3 =~ ^[A-Za-z0-9_-][A-Za-z0-9._\ -]{0,127}$ && $3 != *..* ]] || { echo "Refusing clip name: $3" >&2; exit 1; }
+# Only a local video container is opened, and only from a file: a playlist or
+# concat "video" would otherwise have ffmpeg read other files into the theme.
+clip_in=(-protocol_whitelist file -format_whitelist mov,mp4,m4a,3gp,3g2,mj2,matroska,webm)
 
 if [[ ! -f $clip ]]; then
   echo "Missing $clip - drop the design's video in ~/.config/omarchy/lock-videos first" >&2
@@ -41,7 +45,7 @@ w=${res%% *}; h=${res##* }
 # Preview mode stops after the thumbnail: one frame instead of the whole
 # sequence, so the explorer can render its cards quickly.
 if [[ ${PREVIEW_ONLY:-0} == 1 ]]; then
-  ffmpeg -v error -y -i "$clip" -vf "scale=720:405:force_original_aspect_ratio=increase,crop=720:405" -frames:v 1 "$staging/first.png"
+  ffmpeg -v error -y "${clip_in[@]}" -i "$clip" -vf "scale=720:405:force_original_aspect_ratio=increase,crop=720:405" -frames:v 1 "$staging/first.png"
   magick -size 220x30 xc:none -draw "fill rgba($bg_i,0.55) roundrectangle 0,0 219,29 15,15" "$staging/pill-s.png"
   magick "$staging/first.png" \
     \( -size 720x101 gradient:'#00000073-#00000000' \) -geometry +0+0 -composite \
@@ -54,14 +58,14 @@ fi
 # Whole clip by default, capped at 72 frames: drop the frame rate for longer
 # clips rather than cutting them short. BOOT_CLIP_SECONDS trims the clip to
 # the first N seconds instead (0 or unset plays it all).
-duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$clip")
+duration=$(ffprobe -v error "${clip_in[@]}" -show_entries format=duration -of csv=p=0 "$clip")
 limit="${BOOT_CLIP_SECONDS:-0}"
 if awk -v l="$limit" -v d="$duration" 'BEGIN { exit !(l > 0 && l < d) }'; then
   duration=$limit
 fi
 fps=$(awk -v d="$duration" 'BEGIN { f = 72 / d; if (f > 12) f = 12; printf "%.3f", f }')
 
-ffmpeg -v error -y -t "$duration" -i "$clip" -vf "fps=$fps,scale=$w:$h:force_original_aspect_ratio=increase,crop=$w:$h" \
+ffmpeg -v error -y -t "$duration" "${clip_in[@]}" -i "$clip" -vf "fps=$fps,scale=$w:$h:force_original_aspect_ratio=increase,crop=$w:$h" \
   -start_number 0 "$staging/fr%02d.png"
 num_frames=$(ls "$staging"/fr*.png | wc -l)
 

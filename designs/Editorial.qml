@@ -27,6 +27,7 @@ DesignBase {
     Rectangle { width: 10; height: 10; radius: 5; color: Commons.Color.lock.borderActive; anchors.verticalCenter: parent.verticalCenter }
     Text {
       text: lock.hostName.toUpperCase() + "  ·  " + lock.displayName
+      textFormat: Text.PlainText
       color: lock.withAlpha(Commons.Color.lock.text, 0.75)
       font.family: Style.font.family
       font.pixelSize: Style.font.subtitle

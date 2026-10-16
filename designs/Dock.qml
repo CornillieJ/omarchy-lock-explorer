@@ -50,6 +50,7 @@ DesignBase {
         spacing: 1
         Text {
           text: lock.userName + "@" + lock.hostName
+          textFormat: Text.PlainText
           color: Commons.Color.lock.text
           font.family: Style.font.family
           font.pixelSize: Style.font.subtitle

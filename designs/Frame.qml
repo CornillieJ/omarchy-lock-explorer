@@ -81,6 +81,7 @@ DesignBase {
       Text {
         anchors.right: parent.right
         text: lock.displayName
+        textFormat: Text.PlainText
         color: Commons.Color.lock.text
         font.family: Style.font.family
         font.pixelSize: Style.font.display

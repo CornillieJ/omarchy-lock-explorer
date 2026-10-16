@@ -39,7 +39,8 @@ Item {
     dirty = false
     confirmDiscard = false
     status = ""
-    file.reload()
+    // After the bindings settle: the reader's path follows editor.path.
+    Qt.callLater(reader.reload)
   }
 
   function save() {
@@ -61,9 +62,29 @@ Item {
 
   onPathChanged: if (path.length > 0) load()
 
+  // Reads go through CappedFile (a plain file, a link to one is fine, at most
+  // 1 MiB). The FileView writes, and watches for changes made elsewhere, but
+  // never reads the file itself.
+  CappedFile {
+    id: reader
+    path: editor.path
+    allowLinks: true
+    maxBytes: 1048576
+    preload: false
+    onLoaded: {
+      if (editor.dirty) return
+      editor.loadingText = true
+      var t = reader.text()
+      if (code.text !== t) code.text = t
+      editor.loadingText = false
+      if (editor.service && typeof editor.service.reloadDesigns === "function") editor.service.reloadDesigns()
+    }
+  }
+
   FileView {
     id: file
     path: editor.path
+    preload: false
     watchChanges: true
     atomicWrites: true
     printErrors: false
@@ -72,15 +93,7 @@ Item {
       if (editor.service && typeof editor.service.reloadDesigns === "function") editor.service.reloadDesigns()
     }
     onSaveFailed: function(error) { editor.status = editor.tr("Save failed: %1").arg(error) }
-    onFileChanged: reload()
-    onLoaded: {
-      if (editor.dirty) return
-      editor.loadingText = true
-      var t = text()
-      if (code.text !== t) code.text = t
-      editor.loadingText = false
-      if (editor.service && typeof editor.service.reloadDesigns === "function") editor.service.reloadDesigns()
-    }
+    onFileChanged: reader.reload()
   }
 
   Row {

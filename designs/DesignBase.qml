@@ -130,7 +130,12 @@ Item {
   signal submitFido2Pin(string pin)
 
   readonly property bool errorState: failureMessage.length > 0
-  readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME") || "user"
+  // Names shown on the lock screen are held to their plain shape and length
+  // where they come in, whatever Text later shows them.
+  readonly property string userName: {
+    var u = String(Quickshell.env("USER") || Quickshell.env("LOGNAME") || "").replace(/[^A-Za-z0-9._-]/g, "").substring(0, 32)
+    return u.length > 0 ? u : "user"
+  }
   readonly property string userInitial: displayName.length > 0 ? displayName.charAt(0).toUpperCase() : "?"
   // The account's full name (the GECOS field), set by the service when there
   // is one. displayName is what a design greets: its first word, or else the
@@ -142,7 +147,7 @@ Item {
   // never be taken for rich text.
   readonly property string displayName: {
     var first = String(fullName || "").replace(/[<>]/g, "").trim().split(/\s+/)[0] || ""
-    if (first.length > 0) return first
+    if (first.length > 0) return first.substring(0, 40)
     var u = String(userName || "")
     return u.length > 0 ? u.charAt(0).toUpperCase() + u.slice(1) : u
   }
@@ -162,12 +167,15 @@ Item {
     var encoded = String(videoPath).split("/").map(encodeURIComponent).join("/")
     return "file://" + encoded
   }
-  property string hostName: Quickshell.env("HOSTNAME") || Quickshell.env("HOST") || "omarchy"
+  function cleanHostName(h) {
+    return String(h || "").trim().replace(/[^A-Za-z0-9.-]/g, "").substring(0, 64)
+  }
+  property string hostName: cleanHostName(Quickshell.env("HOSTNAME") || Quickshell.env("HOST")) || "omarchy"
   FileView {
     path: "/etc/hostname"
     printErrors: false
     onLoaded: {
-      var h = String(text() || "").trim()
+      var h = base.cleanHostName(text())
       if (h.length > 0) base.hostName = h
     }
   }
@@ -426,6 +434,8 @@ Item {
       text: base.ownerMessage
       textFormat: Text.PlainText
       wrapMode: Text.Wrap
+      maximumLineCount: 4
+      elide: Text.ElideRight
       horizontalAlignment: Text.AlignHCenter
       color: Commons.Color.lock.text
       font.family: Style.font.family

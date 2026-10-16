@@ -42,6 +42,7 @@ DesignBase {
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
       text: "Hello " + lock.userName + ", this is my design"
+      textFormat: Text.PlainText
       color: lock.withAlpha(Commons.Color.lock.text, 0.75)
       font.family: Style.font.family
       font.pixelSize: Style.font.heading

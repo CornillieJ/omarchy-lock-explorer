@@ -100,6 +100,7 @@ DesignBase {
         anchors.verticalCenter: parent.verticalCenter
         Text {
           text: lock.displayName
+          textFormat: Text.PlainText
           color: Commons.Color.lock.text
           font.family: Style.font.family
           font.pixelSize: Style.font.title
