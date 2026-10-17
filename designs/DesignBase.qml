@@ -507,6 +507,7 @@ Item {
   // 12-hour setting off it is used as written, so a design that never calls
   // this still behaves exactly as before.
   function clock(spec) {
+    if (snapshotMode) return ""
     var s = String(spec)
     if (!twelveHour || s.indexOf("H") === -1) return now.toLocaleString(dateLocale, s)
     // An hour standing on its own -- a flip tile, a poster numeral -- has
@@ -523,7 +524,7 @@ Item {
   }
 
   // For designs that lay the meridiem out themselves next to a bare hour.
-  readonly property string meridiem: twelveHour ? now.toLocaleString(dateLocale, "AP") : ""
+  readonly property string meridiem: !snapshotMode && twelveHour ? now.toLocaleString(dateLocale, "AP") : ""
 
   function greeting() {
     var h = now.getHours()
