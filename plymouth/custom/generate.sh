@@ -268,11 +268,6 @@ while (i < display_count) {
   bg_y[i] = dsp_y[i] + (dsp_h[i] - bg_h[i]) / 2;
   i++;
 }
-# What the entry and the rest measure against: the copy on the first head.
-bg.w = bg_w[0];
-bg.h = bg_h[0];
-bg.x = bg_x[0];
-bg.y = bg_y[0];
 EOF
 
 if [[ -n $bg_has_box && -f $staging/bg-plain.png ]]; then
@@ -404,49 +399,67 @@ if (global.show_design == 0) subtitle.sprite.SetOpacity(0);
 EOF
 
 if [[ $entry != none ]]; then
+# The entry, its bullets and the wait arc are drawn on every head. The boxed
+# background already lands on each one, and Plymouth's head order is the
+# kernel's connector order, not the session's primary display: with the
+# bullets on the first head alone, a laptop panel enumerated after an external
+# monitor showed an input box that never filled as the passphrase was typed
+# (issue #75). Per-head state sits in arrays indexed by head.
 if [[ -f $staging/entry.png ]]; then
 cat <<EOF
 entry.image = Image("entry.png");
-entry.sprite = Sprite(entry.image);
-entry.cx = screen.x + screen.w * $entry_x / 100;
-entry.cy = screen.y + screen.h * $entry_y / 100;
-entry.iw = entry.image.GetWidth() - 48;
-# The text area inside the pill, about as tall as a snapshot's measured one.
-entry.ih = entry.image.GetHeight() * 0.6;
-entry.sprite.SetPosition(entry.cx - entry.image.GetWidth() / 2, entry.cy - entry.image.GetHeight() / 2, 5);
-
-# Hidden until a passphrase prompt actually fires: plymouthd runs this theme
-# for reboot/shutdown too (and for unencrypted boots), where a visible entry
-# reads as a prompt that will never accept input.
-entry.sprite.SetOpacity(0);
+d = 0;
+while (d < display_count) {
+  ent_cx[d] = dsp_x[d] + dsp_w[d] * $entry_x / 100;
+  ent_cy[d] = dsp_y[d] + dsp_h[d] * $entry_y / 100;
+  ent_iw[d] = entry.image.GetWidth() - 48;
+  # The text area inside the pill, about as tall as a snapshot's measured one.
+  ent_ih[d] = entry.image.GetHeight() * 0.6;
+  entry_sprites[d] = Sprite(entry.image);
+  entry_sprites[d].SetPosition(ent_cx[d] - entry.image.GetWidth() / 2, ent_cy[d] - entry.image.GetHeight() / 2, 5);
+  # Hidden until a passphrase prompt actually fires: plymouthd runs this theme
+  # for reboot/shutdown too (and for unencrypted boots), where a visible entry
+  # reads as a prompt that will never accept input.
+  entry_sprites[d].SetOpacity(0);
+  d++;
+}
 EOF
 else
 cat <<EOF
 # Embedded entry: the input box is drawn in the background image already;
 # only the bullets and the spinner go on top of it.
-entry.sprite = Sprite();
-# Relative to the drawn background, not to the screen: the box is painted into
-# the image, so the bullets have to follow wherever the image landed.
-entry.cx = bg.x + bg.w * $entry_x / 100;
-entry.cy = bg.y + bg.h * $entry_y / 100;
-entry.iw = bg.w * $entry_wp / 100;
-# The measured input area's height; 0 in a snapshot conf from before it was
-# recorded, which leaves the wait arc at its minimum size below.
-entry.ih = bg.h * $entry_hp / 100;
+d = 0;
+while (d < display_count) {
+  entry_sprites[d] = Sprite();
+  # Relative to the drawn background, not to the screen: the box is painted
+  # into the image, so the bullets have to follow wherever the image landed.
+  ent_cx[d] = bg_x[d] + bg_w[d] * $entry_x / 100;
+  ent_cy[d] = bg_y[d] + bg_h[d] * $entry_y / 100;
+  ent_iw[d] = bg_w[d] * $entry_wp / 100;
+  # The measured input area's height; 0 in a snapshot conf from before it was
+  # recorded, which leaves the wait arc at its minimum size below.
+  ent_ih[d] = bg_h[d] * $entry_hp / 100;
+  d++;
+}
 EOF
 fi
 cat <<EOF
 
-# One sprite per typed character, spread around the entry center, so the row
-# is pixel-centered in the box both ways.
+# One sprite per typed character and head, spread around the entry center, so
+# the row is pixel-centered in the box both ways. Head d owns bullets
+# d * 24 to d * 24 + 23.
 bullet.image = Image("dot.png");
-for (i = 0; i < 24; i++) {
+for (i = 0; i < 24 * display_count; i++) {
   bullets[i] = Sprite(bullet.image);
   bullets[i].SetOpacity(0);
 }
 
 fun hide_bullets() {
-  for (i = 0; i < 24; i++) bullets[i].SetOpacity(0);
+  for (i = 0; i < 24 * display_count; i++) bullets[i].SetOpacity(0);
+}
+
+fun show_entries(o) {
+  for (d = 0; d < display_count; d++) entry_sprites[d].SetOpacity(o);
 }
 
 # After the passphrase is submitted the entry swaps for pulsing dots, so a
@@ -456,17 +469,27 @@ fun hide_bullets() {
 global.prompt_seen = 0;
 global.boot_wait = 0;
 global.boot_frame = 0;
-booting.sprite = Sprite();
-booting.sprite.SetOpacity(0);
-EOF
-cat <<'EOF'
-# The wait arc replaces what was typed, so it takes that line's size -- about
-# half the box -- and never shrinks below the 22 px it was once drawn at.
-spinsize = Math.Int(entry.ih * 0.95);
-if (spinsize < 22) spinsize = 22;
+for (d = 0; d < display_count; d++) {
+  booting_sprites[d] = Sprite();
+  booting_sprites[d].SetOpacity(0);
+}
+
+fun show_booting(o) {
+  for (d = 0; d < display_count; d++) booting_sprites[d].SetOpacity(o);
+}
 EOF
 # Literal lines: plymouth script string+number concatenation is unreliable.
-for i in $(seq 1 12); do echo "spin[$i] = Image(\"spin$i.png\").Scale(spinsize, spinsize);"; done
+for i in $(seq 1 12); do echo "spin_src[$i] = Image(\"spin$i.png\");"; done
+cat <<'EOF'
+# The wait arc replaces what was typed, so it takes that line's size on each
+# head -- about half the box -- and never shrinks below the 22 px it was once
+# drawn at. Head d's frames are spin[d * 12 + 1] to spin[d * 12 + 12].
+for (d = 0; d < display_count; d++) {
+  spinsize = Math.Int(ent_ih[d] * 0.95);
+  if (spinsize < 22) spinsize = 22;
+  for (n = 1; n <= 12; n++) spin[d * 12 + n] = spin_src[n].Scale(spinsize, spinsize);
+}
+EOF
 cat <<EOF
 
 fun display_password_callback(prompt_text, count) {
@@ -474,21 +497,23 @@ fun display_password_callback(prompt_text, count) {
   global.prompt_seen = 1;
   global.boot_wait = 0;
   $bg_show
-  entry.sprite.SetOpacity(1);
+  show_entries(1);
   $hint_show
-  booting.sprite.SetOpacity(0);
+  show_booting(0);
   if (count > 24) count = 24;
   step = bullet.image.GetWidth() + 8;
   align = "$entry_align";
-  if (align == "left") x0 = entry.cx - entry.iw / 2;
-  else if (align == "right") x0 = entry.cx + entry.iw / 2 - (count * step - 8);
-  else x0 = entry.cx - (count * step - 8) / 2;
-  for (i = 0; i < 24; i++) {
-    if (i < count) {
-      bullets[i].SetPosition(x0 + i * step, entry.cy - bullet.image.GetHeight() / 2, 6);
-      bullets[i].SetOpacity(1);
-    } else {
-      bullets[i].SetOpacity(0);
+  for (d = 0; d < display_count; d++) {
+    if (align == "left") x0 = ent_cx[d] - ent_iw[d] / 2;
+    else if (align == "right") x0 = ent_cx[d] + ent_iw[d] / 2 - (count * step - 8);
+    else x0 = ent_cx[d] - (count * step - 8) / 2;
+    for (i = 0; i < 24; i++) {
+      if (i < count) {
+        bullets[d * 24 + i].SetPosition(x0 + i * step, ent_cy[d] - bullet.image.GetHeight() / 2, 6);
+        bullets[d * 24 + i].SetOpacity(1);
+      } else {
+        bullets[d * 24 + i].SetOpacity(0);
+      }
     }
   }
 }
@@ -498,8 +523,8 @@ fun display_normal_callback() {
   $bg_rehide
   if (global.prompt_seen == 1) {
     global.boot_wait = 1;
-    entry.sprite.SetOpacity(0);
-    booting.sprite.SetOpacity(1);
+    show_entries(0);
+    show_booting(1);
   }
 }
 
@@ -509,9 +534,11 @@ fun refresh_callback() {
     global.boot_frame = global.boot_frame + 1;
     k = Math.Int(global.boot_frame / 4);
     n = k - Math.Int(k / 12) * 12 + 1;
-    b = spin[n];
-    booting.sprite.SetImage(b);
-    booting.sprite.SetPosition(entry.cx - b.GetWidth() / 2, entry.cy - b.GetHeight() / 2, 6);
+    for (d = 0; d < display_count; d++) {
+      b = spin[d * 12 + n];
+      booting_sprites[d].SetImage(b);
+      booting_sprites[d].SetPosition(ent_cx[d] - b.GetWidth() / 2, ent_cy[d] - b.GetHeight() / 2, 6);
+    }
   }
 }
 
