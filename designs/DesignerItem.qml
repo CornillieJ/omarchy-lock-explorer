@@ -554,6 +554,7 @@ Item {
       }
       Grid {
         id: monthGrid
+        opacity: piece.lock && piece.lock.snapshotMode ? 0 : 1
         columns: 7
         Repeater {
           model: month.days
