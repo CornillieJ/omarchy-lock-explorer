@@ -563,6 +563,7 @@ Item {
   readonly property var bootCustomDesigns: service && service.bootCustomDesigns !== undefined ? service.bootCustomDesigns : []
   readonly property int bootClipSeconds: service && service.bootClipSeconds !== undefined ? service.bootClipSeconds : 0
   readonly property string bootShutdown: service && service.bootShutdown !== undefined ? service.bootShutdown : "design"
+  readonly property string bootClock: service && service.bootClock !== undefined ? service.bootClock : "show"
   readonly property var bootCards: {
     var cards = [
       { id: "stock", name: root.tr("Untouched"), kind: root.tr("stock Omarchy splash") },
@@ -750,6 +751,8 @@ Item {
       Quickshell.env("HOME") + "/.local/state/omarchy/lock-explorer-snapshots", sid]
     // Flip snapshot mode before the render delay so any layout it causes has
     // settled long before the geometry is measured and the frame grabbed.
+    if (snapshotHost.item && snapshotHost.item.snapshotHideClock !== undefined)
+      snapshotHost.item.snapshotHideClock = root.bootClock === "hide"
     if (snapshotHost.item && snapshotHost.item.snapshotMode !== undefined)
       snapshotHost.item.snapshotMode = true
     root.snapshotPersist = persist === undefined ? true : persist
@@ -777,6 +780,7 @@ Item {
       // boot theme puts its bullets inside that box, so the boot screen uses
       // the design's own field instead of a generic pill.
       var it = snapshotHost.item
+      if (it && it.snapshotHideClock !== undefined) it.snapshotHideClock = root.bootClock === "hide"
       if (it && it.snapshotMode !== undefined) it.snapshotMode = true
       var rect = ""
       var n = it && it.inputItem ? it.inputItem : null
@@ -897,6 +901,11 @@ Item {
 
   function setBootClipSeconds(n) {
     if (root.service && typeof root.service.setBootClipSeconds === "function") root.service.setBootClipSeconds(n)
+  }
+
+  function setBootClock(v) {
+    if (root.bootApplying) return
+    if (root.service && typeof root.service.setBootClock === "function") root.service.setBootClock(v)
   }
 
   function setBootShutdown(v) {
@@ -3021,6 +3030,49 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         onClicked: root.setBootShutdown(downMode.modelData)
+                      }
+                    }
+                  }
+
+                  Item { width: Style.space(10); height: 1 }
+
+                  // Whether a snapshot boot screen keeps the design's clock,
+                  // see bootClock in Service.qml.
+                  Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.tr("Clock on boot screen")
+                    color: root.muted
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+
+                  Repeater {
+                    model: ["show", "hide"]
+                    Rectangle {
+                      id: bootClk
+                      required property string modelData
+                      readonly property bool current: modelData === root.bootClock
+                      width: bootClkLabel.implicitWidth + Style.space(16)
+                      height: Style.space(24)
+                      radius: root.cornerRadius
+                      color: current ? root.accent : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, bootClkArea.containsMouse ? 0.12 : 0.06)
+                      Behavior on color { ColorAnimation { duration: 100 } }
+
+                      Text {
+                        id: bootClkLabel
+                        anchors.centerIn: parent
+                        text: bootClk.modelData === "show" ? root.tr("Show") : root.tr("Hide")
+                        color: bootClk.current ? Commons.Color.background : root.foreground
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        font.weight: bootClk.current ? Font.DemiBold : Font.Normal
+                      }
+
+                      MouseArea {
+                        id: bootClkArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: root.setBootClock(bootClk.modelData)
                       }
                     }
                   }

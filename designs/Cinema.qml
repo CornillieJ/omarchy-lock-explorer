@@ -29,7 +29,7 @@ DesignBase {
       anchors.left: parent.left
       anchors.leftMargin: lock.pad
       anchors.verticalCenter: parent.verticalCenter
-      opacity: lock.snapshotMode ? 0 : 1
+      opacity: lock.hideTime ? 0 : 1
       text: lock.clock("HH:mm")
       color: "#f2f2f2"
       font.family: Style.font.family
@@ -40,7 +40,7 @@ DesignBase {
       anchors.right: parent.right
       anchors.rightMargin: lock.pad
       anchors.verticalCenter: parent.verticalCenter
-      opacity: lock.snapshotMode ? 0 : 1
+      opacity: lock.hideTime ? 0 : 1
       text: lock.date("dddd d MMMM yyyy").toUpperCase()
       color: "#bdbdbd"
       font.family: Style.font.family

@@ -71,7 +71,7 @@ DesignBase {
         }
 
         Grid {
-          opacity: lock.snapshotMode ? 0 : 1
+          opacity: lock.hideTime ? 0 : 1
           columns: 7
           Repeater {
             model: lock.monthDays

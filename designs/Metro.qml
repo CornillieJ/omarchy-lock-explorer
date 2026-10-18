@@ -56,7 +56,7 @@ DesignBase {
       target: lock
       function onNowChanged() { map.requestPaint() }
       function onSuspendedChanged() { map.requestPaint() }
-      function onSnapshotModeChanged() { map.requestPaint() }
+      function onHideTimeChanged() { map.requestPaint() }
     }
 
     onPaint: {
@@ -88,9 +88,9 @@ DesignBase {
       ctx.lineWidth = 3
       ctx.stroke()
 
-      // Stations. A boot snapshot draws the map with no train on it, since
+      // Stations. A boot snapshot with the clock hidden draws no train, since
       // where the train is would only be the time the snapshot was taken.
-      var live = !lock.snapshotMode
+      var live = !lock.hideTime
       ctx.font = "bold 12px " + Style.font.family
       ctx.textAlign = "center"
       for (var h = 0; h < 24; h++) {
@@ -198,7 +198,7 @@ DesignBase {
           font.pixelSize: Style.font.body
         }
         Text {
-          opacity: lock.snapshotMode ? 0 : 1
+          opacity: lock.hideTime ? 0 : 1
           text: lock.suspended ? lock.tr("SERVICE SUSPENDED")
             : (lock.hour === 23 ? lock.tr("LAST STATION") : lock.tr("NEXT %1 IN %2 MIN").arg((lock.hour + 1 < 10 ? "0" : "") + (lock.hour + 1) + ":00").arg(60 - lock.now.getMinutes()))
           textFormat: Text.PlainText

@@ -2447,6 +2447,41 @@ echo "$out"
     return true
   }
 
+  // Whether a design snapshot used as the boot screen keeps the design's clock.
+  // Plymouth cannot read the time, so a clock in the snapshot shows the moment
+  // it was grabbed (issue #74): "show" keeps the design as it is, "hide" leaves
+  // its time, date and day-bound parts out (DesignBase.hideTime). Saved on
+  // the plugin entry as bootClock; absent means "show".
+  property string bootClockOverride: ""
+  readonly property string configuredBootClock: {
+    var cfg = root.settingsConfig
+    var list = cfg && Array.isArray(cfg.plugins) ? cfg.plugins : []
+    for (var i = 0; i < list.length; i++) {
+      var entry = list[i]
+      if (entry && String(entry.id || "") === pluginId && entry.bootClock === "hide")
+        return "hide"
+    }
+    return "show"
+  }
+  readonly property string bootClock: bootClockOverride.length > 0 ? bootClockOverride : configuredBootClock
+
+  function setBootClock(value) {
+    var v = String(value || "")
+    if (v !== "show" && v !== "hide") return false
+    bootClockOverride = v
+    if (shell && typeof shell.updateEntryInline === "function") {
+      var current = pluginEntry()
+      if (v === "show") delete current.bootClock
+      else current.bootClock = v
+      writeEntry(current)
+    }
+    logEvent("boot-clock=" + v)
+    // Only a snapshot carries the design's clock; it is grabbed again.
+    if (bootApplied.indexOf("snapshot:") === 0)
+      bootResnapshotRequested(bootApplied.substring(9), bootSetting !== "follow")
+    return true
+  }
+
   // What reboot and shutdown show while a design snapshot or a custom layout
   // is the boot screen: "design" keeps the design's box-free capture up,
   // "plain" leaves only the theme's background colour (issue #76). Saved on
@@ -4588,6 +4623,7 @@ echo "$out"
       readonly property var bootCustomDesigns: root.bootCustomDesigns
       readonly property int bootClipSeconds: root.bootClipSeconds
       readonly property string bootShutdown: root.bootShutdown
+      readonly property string bootClock: root.bootClock
       readonly property var bootRotation: root.bootRotation
 
       signal designCustomized(string id, string path)
@@ -4670,6 +4706,7 @@ echo "$out"
       function refreshBootPreviews() { return root.refreshBootPreviews() }
       function setBootClipSeconds(n) { return root.setBootClipSeconds(n) }
       function setBootShutdown(v) { return root.setBootShutdown(v) }
+      function setBootClock(v) { return root.setBootClock(v) }
       function loadBootDesign(name) { return root.loadBootDesign(name) }
       function saveBootDesign(name, content) { return root.saveBootDesign(name, content) }
       function createBootDesign() { return root.createBootDesign() }
@@ -5110,6 +5147,15 @@ echo "$out"
 
     function setBootShutdown(value: string): string {
       return root.setBootShutdown(value) ? "ok" : "invalid-value (design or plain)"
+    }
+
+    // show or hide, see bootClock.
+    function bootClock(): string {
+      return root.bootClock
+    }
+
+    function setBootClock(value: string): string {
+      return root.setBootClock(value) ? "ok" : "invalid-value (show or hide)"
     }
 
     function previewDesign(id: string): string {
