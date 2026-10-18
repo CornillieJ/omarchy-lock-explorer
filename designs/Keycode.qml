@@ -91,6 +91,7 @@ DesignBase {
               anchors.centerIn: parent
               visible: slot.filled && lock.passwordVisible && !lock.fido2Active
               text: lock.passwordText.charAt(slot.index)
+              textFormat: Text.PlainText
               color: Commons.Color.background
               font.family: Style.font.family
               font.pixelSize: Math.round(lock.cell * 0.55)

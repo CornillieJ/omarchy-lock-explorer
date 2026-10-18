@@ -68,6 +68,8 @@ DesignBase {
       }
       Text {
         text: lock.masked
+        // The typed password, revealed or not: never markup.
+        textFormat: Text.PlainText
         color: lock.fg; font.family: Style.font.family; font.pixelSize: lock.fontSize
       }
       Rectangle {
