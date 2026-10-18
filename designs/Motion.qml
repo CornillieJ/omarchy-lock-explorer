@@ -88,7 +88,7 @@ DesignBase {
       anchors.horizontalCenter: parent.horizontalCenter
       text: lock.failedAttempts > 0
         ? lock.tr(lock.failedAttempts === 1 ? "1 failed attempt" : "%1 failed attempts").arg(lock.failedAttempts)
-        : (lock.hasVideo ? "" : "No video yet  ·  omarchy-shell lock pickVideo")
+        : (lock.hasVideo || lock.snapshotMode ? "" : "No video yet  ·  omarchy-shell lock pickVideo")
       color: lock.failedAttempts > 0 ? Commons.Color.lock.textError : lock.withAlpha(Commons.Color.lock.text, 0.55)
       font.family: Style.font.family
       font.pixelSize: Style.font.bodySmall
