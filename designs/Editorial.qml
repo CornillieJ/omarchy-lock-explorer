@@ -57,10 +57,10 @@ DesignBase {
     spacing: 18
 
     Text {
-      // A snapshot is a static boot image: a rendered time would be frozen
-      // forever, so the clock stays off it. `visible` (not opacity) lets the
+      // A snapshot is a static boot image: with the boot clock set to Hide
+      // the frozen time stays off it. `visible` (not opacity) lets the
       // column collapse so the measured field geometry matches the live lock.
-      visible: !lock.snapshotMode
+      visible: !lock.hideTime
       text: lock.clock("HH:mm")
       color: Commons.Color.lock.text
       font.family: Style.font.family
@@ -73,7 +73,7 @@ DesignBase {
     }
 
     Row {
-      visible: !lock.snapshotMode
+      visible: !lock.hideTime
       spacing: 14
       Rectangle { width: 4; height: dateCol.implicitHeight; color: Commons.Color.lock.borderActive; radius: 2 }
       Column {

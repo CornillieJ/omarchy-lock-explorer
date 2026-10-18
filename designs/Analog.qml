@@ -28,6 +28,10 @@ DesignBase {
       anchors.horizontalCenter: parent.horizontalCenter
       property date t: lock.now
       onTChanged: requestPaint()
+      Connections {
+        target: lock
+        function onHideTimeChanged() { face.requestPaint() }
+      }
       onPaint: {
         var ctx = getContext("2d")
         ctx.reset()
@@ -55,6 +59,10 @@ DesignBase {
           ctx.lineTo(c + Math.sin(a) * (r - 10 - len), c - Math.cos(a) * (r - 10 - len))
           ctx.stroke()
         }
+
+        // A boot snapshot with the clock hidden keeps the dial but not the hands:
+        // they would only show the time the snapshot was taken.
+        if (lock.hideTime) return
 
         var h = t.getHours() % 12, m = t.getMinutes(), s = t.getSeconds()
         function hand(angle, length, w, col) {

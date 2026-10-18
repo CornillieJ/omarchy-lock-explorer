@@ -236,7 +236,7 @@ DesignBase {
           { k: "PROJECT", v: lock.hostName.toUpperCase() },
           { k: "DRAWN BY", v: lock.displayName.toUpperCase() },
           { k: "DATE", v: lock.date("yyyy-MM-dd") },
-          { k: "SHEET", v: "1 OF 1  ·  NO. " + lock.sheetNo },
+          { k: "SHEET", v: "1 OF 1" + (lock.hideTime ? "" : "  ·  NO. " + lock.sheetNo) },
           { k: "SCALE", v: "1 : 1  ·  REV " + (lock.failedAttempts > 0 ? String.fromCharCode(65 + Math.min(25, lock.failedAttempts)) : "A") }
         ]
         Rectangle {

@@ -71,6 +71,7 @@ DesignBase {
         }
 
         Grid {
+          opacity: lock.hideTime ? 0 : 1
           columns: 7
           Repeater {
             model: lock.monthDays

@@ -45,12 +45,14 @@ DesignBase {
         radius: 3
         color: lock.withAlpha(Commons.Color.lock.text, 0.2)
         Rectangle {
+          opacity: lock.hideTime ? 0 : 1
           width: parent.width * lock.dayFraction
           height: parent.height
           radius: 3
           color: Commons.Color.lock.borderActive
         }
         Rectangle {
+          opacity: lock.hideTime ? 0 : 1
           x: parent.width * lock.dayFraction - 7
           y: -4
           width: 14; height: 14; radius: 7
@@ -88,6 +90,7 @@ DesignBase {
 
     Text {
       anchors.horizontalCenter: parent.horizontalCenter
+      opacity: lock.hideTime ? 0 : 1
       text: lock.date("dddd, d MMMM") + "  ·  " + lock.tr("%1% of the day").arg(Math.round(lock.dayFraction * 100))
       color: lock.withAlpha(Commons.Color.lock.text, 0.7)
       font.family: Style.font.family

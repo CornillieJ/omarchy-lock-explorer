@@ -83,7 +83,7 @@ DesignBase {
     Column {
       anchors.horizontalCenter: parent.horizontalCenter
       spacing: 4
-      opacity: lock.snapshotMode ? 0 : 1
+      opacity: lock.hideTime ? 0 : 1
       Text {
         anchors.horizontalCenter: parent.horizontalCenter
         text: lock.clock("HH:mm")

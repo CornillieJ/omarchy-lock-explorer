@@ -187,6 +187,12 @@ Item {
   // disappears entirely. That capture becomes the splash for reboot/shutdown
   // and for stretches of boot with no prompt up, where a box is dead chrome.
   property bool snapshotBare: false
+  // The explorer sets this for a boot snapshot when "Clock on boot screen" is
+  // Hide. A snapshot is a still image shown on later boots, so a clock in it
+  // stays at the time of the grab (issue #74); hideTime is the one switch
+  // designs read to leave their time, date and day-bound parts out of it.
+  property bool snapshotHideClock: false
+  readonly property bool hideTime: snapshotMode && snapshotHideClock
   property Item inputItem: null
   property bool shakeOnFail: false
   property bool flashOnFail: true
@@ -501,12 +507,18 @@ Item {
   property bool showAuthIcons: true
   readonly property var dateLocale: Qt.locale(Strings.localeName(language))
   function tr(text) { return Strings.tr(language, text) }
-  function date(spec, when) { return (when || now).toLocaleString(dateLocale, String(spec)) }
+  // date() and clock() render empty in a snapshot with the clock hidden (see
+  // hideTime); a date passed in explicitly still shows.
+  function date(spec, when) {
+    if (hideTime && !when) return ""
+    return (when || now).toLocaleString(dateLocale, String(spec))
+  }
 
   // Designs pass their ordinary 24-hour Qt format string here. With the
   // 12-hour setting off it is used as written, so a design that never calls
   // this still behaves exactly as before.
   function clock(spec) {
+    if (hideTime) return ""
     var s = String(spec)
     if (!twelveHour || s.indexOf("H") === -1) return now.toLocaleString(dateLocale, s)
     // An hour standing on its own -- a flip tile, a poster numeral -- has
@@ -523,9 +535,11 @@ Item {
   }
 
   // For designs that lay the meridiem out themselves next to a bare hour.
-  readonly property string meridiem: twelveHour ? now.toLocaleString(dateLocale, "AP") : ""
+  readonly property string meridiem: !hideTime && twelveHour ? now.toLocaleString(dateLocale, "AP") : ""
 
   function greeting() {
+    // A snapshot with the clock hidden is shown at any hour: no time of day.
+    if (hideTime) return tr("Welcome back")
     var h = now.getHours()
     if (h < 5) return tr("Good night")
     if (h < 12) return tr("Good morning")
