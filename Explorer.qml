@@ -1567,13 +1567,16 @@ Item {
       Keys.priority: Keys.BeforeItem
       // Embedded lock previews can pull keyboard focus; reclaim it whenever
       // it drifts, except while a real editor field wants it.
+      function mayReclaim() {
+        return root.opened && root.bootEditing.length === 0 && !root.editing && !root.designing
+            && !root.customDelayEditing && !root.ownerEditing && !root.searching
+      }
       onActiveFocusChanged: {
-        if (!activeFocus && root.opened && root.bootEditing.length === 0 && !root.editing
-            && !root.designing && !root.customDelayEditing && !root.ownerEditing && !root.searching)
+        if (!activeFocus && mayReclaim())
           Qt.callLater(function() {
-            // Asked again: a click into the search field moves focus there
-            // before the field has said it is searching.
-            if (!root.searching && !keyCatcher.activeFocus) keyCatcher.forceActiveFocus()
+            // Asked again: a click into a field (the search, the owner
+            // message) moves focus there before the field has said so.
+            if (!keyCatcher.activeFocus && keyCatcher.mayReclaim()) keyCatcher.forceActiveFocus()
           })
       }
       Keys.onPressed: function(event) {
