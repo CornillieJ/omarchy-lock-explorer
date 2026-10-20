@@ -22,9 +22,7 @@ Item {
   readonly property string artist: hasMedia ? String(player.trackArtist || "").substring(0, 200) : ""
   readonly property string album: hasMedia ? String(player.trackAlbum || "").substring(0, 200) : ""
   // Cover art comes from whichever program on the session bus claims to be a
-  // player: a local file or an https URL only, never another scheme.
-  readonly property string artUrl: {
-    var u = hasMedia ? String(player.trackArtUrl || "") : ""
-    return /^(file:\/\/\/|https:\/\/)/.test(u) ? u : ""
-  }
+  // player, so only CoverArt's re-encoded copy of it is ever shown.
+  readonly property string artUrl: cover.source
+  CoverArt { id: cover; url: hasMedia ? String(player.trackArtUrl || "") : "" }
 }
