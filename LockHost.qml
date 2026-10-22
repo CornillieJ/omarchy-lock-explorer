@@ -114,6 +114,15 @@ Item {
     if (!ready) emergencyInput.forceActiveFocus()
   }
 
+  // A design reclaims the field's focus the moment it loses it, but a claim
+  // made while the lock window itself is inactive (going into and out of
+  // suspend) may not take, and nothing tried again once the window was active:
+  // the screen came back ignoring the keyboard until something was clicked.
+  // Claim it again whenever the window becomes active. Previews pass
+  // inputEnabled: false, so this never pulls focus away from the explorer.
+  readonly property bool windowActive: Window.active
+  onWindowActiveChanged: if (windowActive && inputEnabled) Qt.callLater(forcePasswordFocus)
+
   onDesignIdChanged: designFallback = false
 
   function attach(it) {
