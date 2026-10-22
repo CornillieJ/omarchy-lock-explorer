@@ -168,7 +168,8 @@ bag as the laptop, enroll it with a PIN.
 `D` opens the selected design in the visual designer if it was made there; on any other design it starts
 a new one from the default layout (see
 [The designer](#the-designer)). `C` on any design copies it to `~/.config/omarchy/lock-designs/`
-(it shows up under Custom) and opens it in the built-in code editor. `E` edits a design of your
+(it shows up under Custom) and opens it in the built-in code editor; on a design you have copied
+before it opens that copy again, and `Shift+C` makes a fresh one. `E` edits a design of your
 own, in the designer or the code editor depending on where it came from. `N` starts a new code
 design from the blank template. `X` (or the
 Delete button on the card) removes a design of your own — press it twice, the first press just
