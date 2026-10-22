@@ -240,10 +240,10 @@ Item {
       { keys: ["F"], text: "Star it, or unstar it, for Favorites" }
     ] },
     { title: "Your designs", rows: [
-      { keys: ["D"], text: "Designer: new, or this one if made there" },
+      { keys: ["D"], text: "Designer: this one if made there, else a new default layout" },
       { keys: ["C"], text: "Copy to Custom and edit the code" },
       { keys: ["E"], text: "Edit a design of your own" },
-      { keys: ["N"], text: "New design from the template" },
+      { keys: ["N"], text: "New code design from the blank template" },
       { keys: ["X", "Del"], text: "Delete your own design (press twice)" }
     ] },
     { title: "Pictures and video", rows: [
