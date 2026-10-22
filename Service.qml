@@ -1487,7 +1487,9 @@ Item {
 
   signal designCustomized(string id, string path)
 
-  function customizeDesign(id) {
+  // A stock design you have customized before opens that copy, the newest if
+  // there are several; `fresh` makes a new copy anyway.
+  function customizeDesign(id, fresh) {
     var d = String(id || "") === "new"
       ? { id: "new", file: "MyDesign.qml", name: "new", template: true }
       : Designs.byId(String(id || ""), root.userDesigns)
@@ -1496,15 +1498,24 @@ Item {
     var source = d.template ? pluginDir + "/extras/lock-designs/" + d.file : pluginDir + "/designs/" + d.file
     if (customizeProc.running) return false
     var importLine = 'import "../plugins/' + pluginId + '/designs"'
-    customizeProc.command = ["bash", "-c", customizeScript, safePathsLib, source, userDesignsDir, d.file.replace(/\.qml$/, ""), d.template ? "" : importLine, d.name]
+    customizeProc.command = ["bash", "-c", customizeScript, safePathsLib, source, userDesignsDir, d.file.replace(/\.qml$/, ""), d.template ? "" : importLine, d.name, fresh || d.template ? "fresh" : ""]
     customizeProc.running = true
     return true
   }
 
   readonly property string customizeScript: '
 set -e; source "$0"
-src="$1"; dir="$2"; base="$3"; imp="$4"; name="$5"
+src="$1"; dir="$2"; base="$3"; imp="$4"; name="$5"; fresh="$6"
 safe_dir "$dir"
+if [[ $fresh != fresh ]]; then
+  copy=""
+  for f in "$dir"/*.qml; do
+    [[ -f $f && ! -L $f ]] || continue
+    [[ $(head -c 200 -- "$f" | head -n 1) == "// Customized copy of the $name design."* ]] || continue
+    if [[ -z $copy || $f -nt $copy ]]; then copy=$f; fi
+  done
+  if [[ -n $copy ]]; then echo "$copy"; exit 0; fi
+fi
 target="$dir/$base.qml"; n=2
 while [[ -e "$target" ]]; do target="$dir/$base$n.qml"; n=$((n+1)); done
 {
@@ -1528,8 +1539,10 @@ echo "$target"
         var target = String(customizeOut.text || "").trim()
         if (target.length === 0) return
         var d = Designs.fromUserFile(target)
-        root.userDesigns = root.userDesigns.concat([d])
-        root.designsRevision += 1
+        if (!Designs.byId(d.id, root.userDesigns)) {
+          root.userDesigns = root.userDesigns.concat([d])
+          root.designsRevision += 1
+        }
         root.designCustomized(d.id, target)
         root.rescanUserDesigns()
       }
@@ -4636,7 +4649,7 @@ echo "$out"
       signal bootDesignLoaded(string name, string content)
 
       function setDesign(id, how) { return root.setDesign(id, how) }
-      function customizeDesign(id) { return root.customizeDesign(id) }
+      function customizeDesign(id, fresh) { return root.customizeDesign(id, fresh) }
       function createDesignerDesign(content) { return root.createDesignerDesign(content) }
       function deleteDesign(id) { return root.deleteDesign(id) }
       function rescanUserDesigns() { return root.rescanUserDesigns() }

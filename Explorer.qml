@@ -240,10 +240,10 @@ Item {
       { keys: ["F"], text: "Star it, or unstar it, for Favorites" }
     ] },
     { title: "Your designs", rows: [
-      { keys: ["D"], text: "Designer: new, or this one if made there" },
-      { keys: ["C"], text: "Copy to Custom and edit the code" },
+      { keys: ["D"], text: "Designer: this one if made there, else a new default layout" },
+      { keys: ["C", "Shift+C"], text: "Edit your code copy of it, or a fresh copy" },
       { keys: ["E"], text: "Edit a design of your own" },
-      { keys: ["N"], text: "New design from the template" },
+      { keys: ["N"], text: "New code design from the blank template" },
       { keys: ["X", "Del"], text: "Delete your own design (press twice)" }
     ] },
     { title: "Pictures and video", rows: [
@@ -1319,10 +1319,12 @@ Item {
     keyCatcher.forceActiveFocus()
   }
 
-  function customizeSelected() {
+  // A stock design opens the copy you made of it before; `fresh` (Shift+C)
+  // makes another one.
+  function customizeSelected(fresh) {
     if (!root.selectedDesign || !root.service) return
     if (root.selectedDesign.path) { editSelected(); return }
-    root.service.customizeDesign(root.selectedDesign.id)
+    root.service.customizeDesign(root.selectedDesign.id, fresh === true)
   }
 
   // A design of your own opens where it was made: the designer for a layout,
@@ -1628,7 +1630,7 @@ Item {
         } else if (event.key === Qt.Key_Space || event.key === Qt.Key_P) {
           root.fullPreview = !root.fullPreview; event.accepted = true
         } else if (event.key === Qt.Key_C) {
-          root.customizeSelected(); event.accepted = true
+          root.customizeSelected((event.modifiers & Qt.ShiftModifier) !== 0); event.accepted = true
         } else if (event.key === Qt.Key_E) {
           if (root.selectedDesign && root.selectedDesign.path) root.editSelected()
           else root.customizeSelected()
