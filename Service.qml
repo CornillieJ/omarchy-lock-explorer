@@ -3017,6 +3017,12 @@ echo "$out"
   // the wake has run and the panel has had wakeInputGrace to light up, so the
   // keystrokes that switched the screen on never land in the password.
   property bool inputBlocked: false
+  // Set by a blank, taken by the one wake that undoes it. Only that wake runs
+  // omarchy-system-wake and so starts the grace: a key or pointer move after
+  // it used to run the helpers again, and each run pushed the grace back, so
+  // the field stayed inert for as long as anyone kept typing (#86). A shell
+  // started over a panel left dark still owes it one.
+  property bool wakePending: true
 
   // With `misc:session_lock_xray` the compositor keeps drawing the desktop
   // under the lock surface, so the unlock fades straight into it and the
@@ -3350,7 +3356,10 @@ echo "$out"
       inputUnblockTimer.interval = 3000
       inputUnblockTimer.restart()
     }
-    if (!wakeProcess.running) wakeProcess.running = true
+    if (wakePending && !wakeProcess.running) {
+      wakePending = false
+      wakeProcess.running = true
+    }
     if (lockRequested) armBlankTimer()
   }
 
@@ -3359,6 +3368,7 @@ echo "$out"
     screenBlanked = !displayBlankingSuppressed
     inputBlocked = screenBlanked
     inputUnblockTimer.stop()
+    wakePending = true
     // Nothing to authenticate to while the panel is dark: drop the scan and
     // let go of the camera until it comes back.
     if (screenBlanked) stopFace()

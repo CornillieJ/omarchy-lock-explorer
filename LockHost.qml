@@ -122,6 +122,10 @@ Item {
   // inputEnabled: false, so this never pulls focus away from the explorer.
   readonly property bool windowActive: Window.active
   onWindowActiveChanged: if (windowActive && inputEnabled) Qt.callLater(forcePasswordFocus)
+  // The window stays active through a blank and a resume, so the claim above
+  // never fires there. The end of the wake grace is the other moment the
+  // field comes back to life: claim it then as well (#85).
+  onInputBlockedChanged: if (!inputBlocked && inputEnabled) Qt.callLater(forcePasswordFocus)
 
   onDesignIdChanged: designFallback = false
 
